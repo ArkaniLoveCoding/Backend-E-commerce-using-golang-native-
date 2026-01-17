@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 
 	"github.com/ArkaniLoveCoding/Golang-Restfull-Api-MySql/types"
@@ -73,7 +74,7 @@ func (m *mockStore) GetUserById (id int) (*[]types.User, error) {
 	return nil, nil
 }
 
-func (m *mockStore) CreateUser (context.Context, types.User) error {
+func (m *mockStore) CreateUser (context.Context, *types.User) error {
 	return nil
 }
 
@@ -82,7 +83,7 @@ func (m *mockStore) GetAllUser ([]types.User) (*[]types.User, error) {
 }
 
 func (m *mockStore) UpdateToken (
-	id int, token string, token_refresh string,
-) (*types.User, error) {
-	return nil, nil
+	id uuid.UUID, token string, token_refresh string,
+) error {
+	return nil
 }

@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 
 	"github.com/ArkaniLoveCoding/Golang-Restfull-Api-MySql/types"
@@ -28,9 +30,9 @@ func (h *HandleRequest) LoginUserHandler(router *mux.Router) {
 	router.HandleFunc("/login", h.LoginFunc).Methods("POST")
 }
 
-func (h *HandleRequest) UpdateTokenFunc (id int, token string, token_refresh string) error {
+func (h *HandleRequest) UpdateTokenFunc (id uuid.UUID, token string, token_refresh string) error {
 
-	_, err := h.db.UpdateToken(id, token, token_refresh)
+	err := h.db.UpdateToken(id, token, token_refresh)
 	if err != nil {
 		return errors.New("Failed to update the token!")
 	}
@@ -48,13 +50,18 @@ func (h *HandleRequest) RegistrationFunc(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	user, err := 
+	validate = validator.New()
+	if err := validate.Struct(&request); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err.Error(), false)
+	}
+
+	users, err := 
 	h.db.GetUserByEmail(request.Email)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Failed to load the email", err.Error())
 		return
 	}
-	if user != nil {
+	if users != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Email has been already exist!", nil)
 		return
 	}
@@ -65,34 +72,76 @@ func (h *HandleRequest) RegistrationFunc(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	validate = validator.New()
-	if err := validate.Struct(&request); err != nil {
-		utils.WriteError(w, http.StatusBadRequest, err.Error(), false)
-	}
-	context := context.Background()
+	ctx, cancle := context.WithTimeout(context.Background(), time.Second * 10)
+	defer cancle()
+	time_created := time.Now().UTC()
 
-	if err := h.db.CreateUser(context, types.User{
+	var user = &types.User{
+		ID: uuid.New(),
 		Firstname: request.Firstname,
 		Lastname: request.Lastname,
-		Password: string(hash),
+		Password: hash,
 		Email: request.Email,
 		Country: request.Country,
 		Address: request.Address,
 		Role: request.Role,
 		Token: request.Token,
 		Rerfresh_token: request.Rerfresh_token,
-	}); err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "Cant create new user !", err.Error())
-		return
+		CreatedAt: time_created,
 	}
 
-	utils.WriteSuccess(w, http.StatusCreated, "Success to create new user!", request)
+	if err := h.db.CreateUser(ctx, user); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err.Error(), false)
+		return      
+	}
 
+	utils.WriteSuccess(w, http.StatusCreated, "Success to create new user !", user)
 }
 
 func (h *HandleRequest) LoginFunc(w http.ResponseWriter, r *http.Request) {
 
-	
+	var validate *validator.Validate
+	var request types.Login
+	if err := utils.DecodeData(r, &request); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to decode the request", err.Error())
+		return
+	}
+
+	validate = validator.New()
+	if err := validate.Struct(request); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to create new user, because something missing!", err.Error())
+		return
+	}
+
+	_, err := h.db.GetUserByEmail(request.Email)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to find the email taht mactheds", err.Error())
+		return 
+	}
+
+	var u types.User
+	if err := utils.ComparePassword(u.Password, request.Password); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to compare the password!", err.Error())
+		return
+	}
+
+	token, refresh_token, err := utils.GenerateJwt(
+		u.ID, 
+		u.Firstname, u.Lastname, 
+		u.Password,
+		u.Email,
+		u.Role,
+	)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to genereate jwt!", err.Error())
+	}
+
+	if err := h.UpdateTokenFunc(u.ID, token, refresh_token); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to update the token!", err.Error())
+		return
+	}
+
+	utils.WriteSuccess(w, http.StatusOK, "Sucessfully!", u)
 
 }
 

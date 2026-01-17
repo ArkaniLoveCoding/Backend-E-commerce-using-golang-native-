@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 
 	"github.com/ArkaniLoveCoding/Golang-Restfull-Api-MySql/types"
@@ -19,7 +20,7 @@ func NewStore(store *sqlx.DB) *Store {
 	return &Store{store: store}
 }
 
-func (s *Store) UpdateToken(id int, token string, token_refresh string) (*types.User, error) {
+func (s *Store) UpdateToken(id uuid.UUID, token string, token_refresh string) error {
 
 	query := `
 		UPDATE users 
@@ -31,10 +32,10 @@ func (s *Store) UpdateToken(id int, token string, token_refresh string) (*types.
 
 	_, err := s.store.DB.Exec(query, id, token, token_refresh)
 	if err != nil {
-		return nil, errors.New("Failed to update token!")
+		return errors.New("Failed to update token!")
 	}
 
-	return nil, nil
+	return nil
 
 }
 
@@ -62,12 +63,13 @@ func (s *Store) GetUserById(id int) (*[]types.User, error) {
 	return &user, nil
 }
 
-func (s *Store) CreateUser(ctx context.Context, user types.User) error {
+func (s *Store) CreateUser(ctx context.Context, user *types.User) error  {
+	
 	query := `
 		INSERT INTO users (id, firstname, lastname, 
 		password, email, country, address, role, token, refresh_token, created_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-		RETURNING *;
+		RETURNING *
 	`
 
 	if err := s.store.QueryRowContext(
@@ -97,7 +99,7 @@ func (s *Store) CreateUser(ctx context.Context, user types.User) error {
 		&user.Rerfresh_token,
 		&user.CreatedAt,
 		); err != nil {
-		return errors.New("Failed to load the query! " + err.Error())
+		return nil
 	}
 
 	return nil

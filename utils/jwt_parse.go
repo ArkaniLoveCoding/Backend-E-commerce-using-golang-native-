@@ -6,11 +6,12 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 )
 
 type SignedDetails struct {
-	Id 			int 
+	Id 			uuid.UUID
 	Firstname 	string
 	Lastname  	string
 	Password  	string
@@ -19,7 +20,7 @@ type SignedDetails struct {
 	jwt.RegisteredClaims
 }
 
-func GenerateJwt (id int, firstname string, lastname string, password string, email string, role string) (string, string, error) {
+func GenerateJwt (id uuid.UUID, firstname string, lastname string, password string, email string, role string) (string, string, error) {
 	
 	if err := godotenv.Load(); err != nil {
 		return "", "", errors.New("Failed to load env as you want!")

@@ -9,15 +9,15 @@ import (
 
 
 type UserStore interface {
-	UpdateToken(id int, token string, token_refresh string) (*User, error)
+	UpdateToken(id uuid.UUID, token string, token_refresh string) error
 	GetUserByEmail(email string) (*User, error)
 	GetUserById(id int) (*[]User, error)
-	CreateUser(context.Context, User) error 
+	CreateUser(context.Context, *User) error 
 	GetAllUser([]User) (*[]User, error)
 }
 
 type User struct {
-	ID 				uuid.UUID		`db:"id"`
+	ID 				uuid.UUID	`db:"id"`
 	Firstname 		string  	`db:"firstname"`
 	Lastname 		string 		`db:"lastname"`
 	Password 		string 		`db:"password"`
@@ -31,7 +31,7 @@ type User struct {
 }
 
 type Register struct {
-	ID 				uuid.UUID		`json:"id"`
+	ID 				uuid.UUID	`json:"id"`
 	Firstname 		string 		`json:"firstname" validate:"required,min=2,max=100"`
 	Lastname 		string  	`json:"lastname" validate:"required,min=2,max=100"`
 	Password 		string  	`json:"password" validate:"required,min=2,max=100"`
