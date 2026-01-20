@@ -1,13 +1,20 @@
 package types
 
-import "time"
+import (
+	"context"
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type ProductStore interface {
-	GetAllProduct([]User) (*[]User, error)
+	GetAllProduct([]Products) (*Products, error)
+	GetProductByID(id string) (*Products, error)
+	CreateNewProduct(ctx context.Context, products *Products) error
 }
 
 type Products struct {
-	ID         		int    		`db:"id"`
+	Id        		uuid.UUID    `db:"id"`
 	Name      		string 		`db:"name"`
 	Stock     		int    		`db:"stock"`
 	Price      		string 		`db:"price"`
@@ -18,8 +25,12 @@ type Products struct {
 }
 
 type ProductResponse struct {
+	Id				uuid.UUID 	`json:"id"`
 	Name 			string 		`json:"name" validate:"required,min=2,max=100"`
 	Stock 			int 		`json:"stock" validate:"required,min=2,max=100"`
+	Price 			string 		`json:"price" validate:"required,min=2,max=100"`
 	Expired 		string		`json:"expired" validate:"required,min=2,max=100"`
 	Category 		string 		`json:"category" validate:"required"`
+	Created_at 		time.Time 	`json:"created_at"`
+	Updated_at 		time.Time 	`json:"updated_at"`
 }

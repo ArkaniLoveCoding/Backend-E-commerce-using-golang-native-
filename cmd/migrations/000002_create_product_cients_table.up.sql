@@ -1,5 +1,6 @@
 CREATE TABLE public.product_clients (
-    id          INT PRIMARY KEY,
+    id          UUID PRIMARY KEY DEFAULT
+                gen_random_uuid(),
     name        TEXT NOT NULL, 
     stock       INT NOT NULL,
     price       TEXT NOT NULL,

@@ -66,23 +66,23 @@ func TestUser(t *testing.T) {
 
 type mockStore struct {}
 
-func (m *mockStore) GetUserByEmail (email string) (*types.User, error) {
+func (m *mockStore) GetUserByEmail(email string) (*types.User, error) {
 	return nil, nil
 }
 
-func (m *mockStore) GetUserById (id int) (*[]types.User, error) {
+func (m *mockStore) GetUserById(id uuid.UUID) (*types.User, error) {
 	return nil, nil
 }
 
-func (m *mockStore) CreateUser (context.Context, *types.User) error {
+func (m *mockStore) CreateUser(context.Context, *types.User) error {
 	return nil
 }
 
-func (m *mockStore) GetAllUser ([]types.User) (*[]types.User, error) {
+func (m *mockStore) GetAllUser([]types.User) (*[]types.User, error) {
 	return nil, nil
 }
 
-func (m *mockStore) UpdateToken (
+func (m *mockStore) UpdateToken(
 	id uuid.UUID, token string, token_refresh string,
 ) error {
 	return nil

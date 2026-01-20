@@ -11,7 +11,7 @@ import (
 )
 
 type SignedDetails struct {
-	Id 			uuid.UUID
+	Id 			string
 	Firstname 	string
 	Lastname  	string
 	Password  	string
@@ -28,7 +28,7 @@ func GenerateJwt (id uuid.UUID, firstname string, lastname string, password stri
 	token_not_refresh := os.Getenv("JWT_SECRET_KEY")
 
 	signed_details_not_refresh := &SignedDetails{
-		Id: id,
+		Id: id.String(),
 		Firstname: firstname,
 		Lastname: lastname,
 		Password: password,
@@ -42,10 +42,16 @@ func GenerateJwt (id uuid.UUID, firstname string, lastname string, password stri
 		},
 	}
 
+	token_not_refresh_final := jwt.NewWithClaims(jwt.SigningMethodHS256, signed_details_not_refresh)
+	token_not_refresh_final_1, err := token_not_refresh_final.SignedString([]byte(token_not_refresh))
+	if err != nil {
+		return "", "", errors.New("Failed to signed the data of the json web token!" + err.Error())
+	}
+
 	token_refresh := os.Getenv("JWT_SECRET_KEY_REFRESH_TOKEN")
 
 	signed_details_refresh := &SignedDetails{
-		Id: id,
+		Id: id.String(),
 		Firstname: firstname,
 		Lastname: lastname,
 		Password: password,
@@ -58,16 +64,10 @@ func GenerateJwt (id uuid.UUID, firstname string, lastname string, password stri
 		},
 	}
 
-	token_refresh_final := jwt.NewWithClaims(jwt.SigningMethodES256, signed_details_refresh)
-	token_refresh_final_1, err  := token_refresh_final.SignedString([]byte(token_not_refresh))
+	token_refresh_final := jwt.NewWithClaims(jwt.SigningMethodHS256, signed_details_refresh)
+	token_refresh_final_1, err  := token_refresh_final.SignedString([]byte(token_refresh))
 	if err != nil {
-		return "", "", errors.New("Failed to signed the data of json web token!")
-	}
-
-	token_not_refresh_final := jwt.NewWithClaims(jwt.SigningMethodES256, signed_details_not_refresh)
-	token_not_refresh_final_1, err := token_not_refresh_final.SignedString([]byte(token_not_refresh))
-	if err != nil {
-		return "", "", errors.New("Failed to signed the data of the json web token!")
+		return "", "", errors.New("Failed to signed the data of json web token!" + err.Error())
 	}
 
 	return token_not_refresh_final_1, token_refresh_final_1, nil

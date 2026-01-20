@@ -11,13 +11,13 @@ import (
 type UserStore interface {
 	UpdateToken(id uuid.UUID, token string, token_refresh string) error
 	GetUserByEmail(email string) (*User, error)
-	GetUserById(id int) (*[]User, error)
+	GetUserById(id uuid.UUID) (*User, error)
 	CreateUser(context.Context, *User) error 
 	GetAllUser([]User) (*[]User, error)
 }
 
 type User struct {
-	ID 				uuid.UUID	`db:"id"`
+	Id				uuid.UUID	`db:"id"`
 	Firstname 		string  	`db:"firstname"`
 	Lastname 		string 		`db:"lastname"`
 	Password 		string 		`db:"password"`
@@ -31,7 +31,7 @@ type User struct {
 }
 
 type Register struct {
-	ID 				uuid.UUID	`json:"id"`
+	Id 				uuid.UUID	`json:"id"`
 	Firstname 		string 		`json:"firstname" validate:"required,min=2,max=100"`
 	Lastname 		string  	`json:"lastname" validate:"required,min=2,max=100"`
 	Password 		string  	`json:"password" validate:"required,min=2,max=100"`
@@ -46,5 +46,19 @@ type Register struct {
 
 type Login struct {
 	Email 			string	`json:"email" validate:"required,email"`
-	Password 		string	`json:"pasword" validate:"required,min=2,max=100"`
+	Password 		string	`json:"password" validate:"required,min=2,max=100"`
+}
+
+type UserResponse struct {
+	Id				uuid.UUID	`json:"id"`
+	Firstname 		string 		`json:"firstname"`
+	Lastname 		string  	`json:"lastname"`
+	Password 		string  	`json:"password"`
+	Email 	 		string 		`json:"email"`
+	Country 		string 		`json:"country"`
+	Address 		string 		`json:"address"`
+	Role  			string 		`json:"role"`
+	Token 			string 		`json:"token"`
+	Rerfresh_token	string 		`json:"refresh_token"`
+	Created_at 		time.Time 	`json:"created_at"`
 }

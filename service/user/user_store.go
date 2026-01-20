@@ -24,15 +24,14 @@ func (s *Store) UpdateToken(id uuid.UUID, token string, token_refresh string) er
 
 	query := `
 		UPDATE users 
-		SET token = $1,
-			token_refresh = $2,
-			updated_at = NOW(),
-		WHERE id = $3
+		SET token = $2,
+			refresh_token = $3
+		WHERE id = $1
 	`
 
 	_, err := s.store.DB.Exec(query, id, token, token_refresh)
 	if err != nil {
-		return errors.New("Failed to update token!")
+		return errors.New("Failed to update token!" + err.Error())
 	}
 
 	return nil
@@ -41,7 +40,10 @@ func (s *Store) UpdateToken(id uuid.UUID, token string, token_refresh string) er
 
 func (s *Store) GetUserByEmail(email string) (*types.User, error) {
 	var user types.User
-	err := s.store.Get(&user, "SELECT id, firstname, lastname, password, email, created_at FROM users WHERE email = $1", email)
+	query := `SELECT 
+	id, firstname, lastname, password, email, country, address, role, token, refresh_token, created_at
+	FROM users WHERE email = $1`
+	err := s.store.Get(&user, query, email)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
@@ -51,8 +53,9 @@ func (s *Store) GetUserByEmail(email string) (*types.User, error) {
 	return &user, nil
 }
 
-func (s *Store) GetUserById(id int) (*[]types.User, error) {
-	var user []types.User
+func (s *Store) GetUserById(id uuid.UUID) (*types.User, error) {
+
+	var user types.User
 	err := s.store.Get(&user, "SELECT id, firstname, lastname, password, email, created_at FROM users WHERE id = $1", id)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -61,6 +64,7 @@ func (s *Store) GetUserById(id int) (*[]types.User, error) {
 		return nil, fmt.Errorf("failed to get user by id: %w", err)
 	}
 	return &user, nil
+
 }
 
 func (s *Store) CreateUser(ctx context.Context, user *types.User) error  {
@@ -75,7 +79,7 @@ func (s *Store) CreateUser(ctx context.Context, user *types.User) error  {
 	if err := s.store.QueryRowContext(
 		ctx,
 		query,
-		user.ID,
+		user.Id,
 		user.Firstname,
 		user.Lastname,
 		user.Password,
@@ -87,7 +91,7 @@ func (s *Store) CreateUser(ctx context.Context, user *types.User) error  {
 		user.Rerfresh_token,
 		user.CreatedAt,
 	).Scan(
-		&user.ID,
+		&user.Id,
 		&user.Firstname,
 		&user.Lastname,
 		&user.Password,

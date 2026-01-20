@@ -9,6 +9,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/jmoiron/sqlx"
 
+	"github.com/ArkaniLoveCoding/Golang-Restfull-Api-MySql/middleware"
 	service "github.com/ArkaniLoveCoding/Golang-Restfull-Api-MySql/service/user"
 )
 
@@ -40,12 +41,22 @@ func (s *ApiServer) Run() error {
 		}`))
 	})
 
+	// not authenticate
 
 	userStore := service.NewStore(s.db)
 	userService := service.NewHandlerUser(userStore)
-
 	userService.RegistrationUserHandler(subRouter)
 	userService.LoginUserHandler(subRouter)
+
+	// products router
+
+	// is authenticate 
+
+	userStores := service.NewStore(s.db)
+	userServices := service.NewHandlerUserForAuthenticate(userStores)
+	subRouter.Handle("/profile", middleware.AuthenticateProfile(http.HandlerFunc(
+		userServices.GetProfileUser,
+	))).Methods("GET")
 
 	// Create HTTP server
 	s.server = &http.Server{
