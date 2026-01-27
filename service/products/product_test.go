@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 
 	"github.com/ArkaniLoveCoding/Golang-Restfull-Api-MySql/types"
@@ -45,7 +46,7 @@ func TestProducts(t *testing.T) {
 		rr := httptest.NewRecorder()
 		router := mux.NewRouter()
 
-		router.HandleFunc("/products", Handler.CreateProductHandler)
+		router.HandleFunc("/products/test", Handler.CreateProductHandler)
 		router.ServeHTTP(rr, req)
 
 		if rr.Code == http.StatusBadRequest {
@@ -58,13 +59,13 @@ func TestProducts(t *testing.T) {
 
 }
 
-func (m *mockStore) GetAllProduct([]types.Products) (*types.Products, error) {
+func (m *mockStore) GetAllProduct() ([]types.Products, error) {
 	
 	return nil, nil
 
 }
 
-func (m *mockStore) GetProductByID(id string) (*types.Products, error) {
+func (m *mockStore) GetProductByID(id uuid.UUID) (*types.Products, error) {
 
 	return nil, nil
 

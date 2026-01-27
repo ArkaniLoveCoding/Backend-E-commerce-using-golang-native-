@@ -78,12 +78,29 @@ func (m *mockStore) CreateUser(context.Context, *types.User) error {
 	return nil
 }
 
-func (m *mockStore) GetAllUser([]types.User) (*[]types.User, error) {
+func (m *mockStore) GetAllUser() ([]types.User, error) {
 	return nil, nil
 }
 
 func (m *mockStore) UpdateToken(
 	id uuid.UUID, token string, token_refresh string,
 ) error {
+	return nil
+}
+
+func (m *mockStore) GetUsersRole(email string) (*types.User, error) {
+	return nil, nil
+}
+
+func (m *mockStore) UpdateDataUser(
+	id uuid.UUID,
+	ctx context.Context,
+	firstname string,
+	lastname string,
+	password string,
+	email string,
+	country string,
+	address string, 
+	) error {
 	return nil
 }

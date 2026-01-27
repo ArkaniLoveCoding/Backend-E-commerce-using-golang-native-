@@ -10,5 +10,6 @@ CREATE TABLE public.users (
     role            TEXT NOT NULL,
     token           TEXT,
     refresh_token   TEXT,
-    created_at      TIMESTAMP NOT NULL
+    created_at      TIMESTAMP NOT NULL,
+    updated_at      TIMESTAMP NOT NULL
 );

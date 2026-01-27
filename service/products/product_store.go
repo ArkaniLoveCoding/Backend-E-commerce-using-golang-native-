@@ -5,42 +5,47 @@ import (
 	"database/sql"
 	"errors"
 
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 
 	"github.com/ArkaniLoveCoding/Golang-Restfull-Api-MySql/types"
 )
 
 type Store struct {
-	db *sqlx.DB
+	store *sqlx.DB
 }
 
-func NewStore (db *sqlx.DB) *Store {
-	return &Store{db: db}
+func NewStoreProduct (store *sqlx.DB) *Store {
+	return &Store{store: store}
 }
 
-func (s *Store) GetAllProduct([]types.Products) (*types.Products, error) {
+func (s *Store) GetAllProduct() ([]types.Products, error) {
 
-	query := `SELECT name, stock, price, expired, category, created_at, updated_at FROM product_clients`
-	var products []types.Products
+	query := `SELECT id, name, stock, price, expired, category, created_at, updated_at FROM product_clients`
 
-	rows, err := s.db.Queryx(query)
+	rows, err := s.store.Queryx(query)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, errors.New("Faield to get all product!")
 		}
 		return nil, nil
 	}
+	defer rows.Close()
+
+	var products []types.Products
 
 	for rows.Next() {
-		if err := rows.StructScan(&products); err != nil {
+		var p types.Products
+		if err := rows.StructScan(&p); err != nil {
 			return nil, errors.New("Failed to scan data!")
 		}
+		products = append(products, p)
 	}
 
-	return nil, nil
+	return products, nil
 }
 
-func (s *Store) GetProductByID(id string) (*types.Products, error) {
+func (s *Store) GetProductByID(id uuid.UUID) (*types.Products, error) {
 
 	var products types.Products
 	query := 
@@ -49,14 +54,14 @@ func (s *Store) GetProductByID(id string) (*types.Products, error) {
 	WHERE id = $1
 	`
 
-	if err := s.db.Get(&products, query, id); err != nil {
+	if err := s.store.Get(&products, query, id); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, errors.New("Failed to find the id!")
 		}
 		return nil, nil
 	}
 
-	return nil, nil
+	return &products, nil
 
 }
 
@@ -68,7 +73,7 @@ func (s *Store) CreateNewProduct(ctx context.Context, products *types.Products) 
 	RETURNING *
 	`
 
-	if err := s.db.QueryRowContext(
+	if err := s.store.QueryRowContext(
 		ctx, 
 		query,
 		products.Id,

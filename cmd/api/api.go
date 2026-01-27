@@ -10,7 +10,8 @@ import (
 	"github.com/jmoiron/sqlx"
 
 	"github.com/ArkaniLoveCoding/Golang-Restfull-Api-MySql/middleware"
-	service "github.com/ArkaniLoveCoding/Golang-Restfull-Api-MySql/service/user"
+	serviceProduct "github.com/ArkaniLoveCoding/Golang-Restfull-Api-MySql/service/products"
+	serviceUser "github.com/ArkaniLoveCoding/Golang-Restfull-Api-MySql/service/users"
 )
 
 type ApiServer struct {
@@ -41,22 +42,83 @@ func (s *ApiServer) Run() error {
 		}`))
 	})
 
-	// not authenticate
+	// not authenticate 
 
-	userStore := service.NewStore(s.db)
-	userService := service.NewHandlerUser(userStore)
-	userService.RegistrationUserHandler(subRouter)
-	userService.LoginUserHandler(subRouter)
+	userStore := serviceUser.NewStore(s.db)
+	userService := serviceUser.NewHandlerUser(userStore)
 
-	// products router
+	userStores := serviceUser.NewStore(s.db)
+	userServices := serviceUser.NewHandlerUserForAuthenticate(userStores)
 
-	// is authenticate 
+	productStore := serviceProduct.NewStoreProduct(s.db)
+	productServices := serviceProduct.NewHandlerProduct(productStore)
 
-	userStores := service.NewStore(s.db)
-	userServices := service.NewHandlerUserForAuthenticate(userStores)
-	subRouter.Handle("/profile", middleware.AuthenticateProfile(http.HandlerFunc(
+	// register for user
+
+	subRouter.Handle(
+		"/registration",
+		http.HandlerFunc(
+			userService.RegistrationFunc,
+		),
+	).Methods("POST")
+
+	// login for user
+
+	subRouter.Handle(
+		"/login",
+		http.HandlerFunc(
+			userService.LoginFunc,
+		),
+	).Methods("POST")
+
+	// update data user 
+	subRouter.Handle(
+		"/users/{id}",
+		http.HandlerFunc(
+			userService.UpdateUser,
+		),
+	).Methods("PUT")
+
+	// is authenticate
+
+	subRouter.Handle("/profile", middleware.AuthenticateForIdUser(http.HandlerFunc(
 		userServices.GetProfileUser,
 	))).Methods("GET")
+
+
+	// products router (this router is compeletly authenticate for a several methods)
+
+	// create new product
+	subRouter.Handle(
+		"/products",
+		middleware.AuthenticateForRole(http.HandlerFunc(
+			productServices.CreateProductHandler,
+		)),
+	).Methods("POST")
+	
+	// create products for testing the function of router (this is not authenticate!)
+	subRouter.Handle(
+		"/products/test",
+		http.HandlerFunc(
+			productServices.CreateNewProductTesting,
+		),
+	).Methods("POST")
+
+	// get all product
+	subRouter.Handle(
+		"/products",
+		http.HandlerFunc(
+			productServices.GetAllProduct,
+		),
+	).Methods("GET")
+
+	// get one product by id
+	subRouter.Handle(
+		"/products/{id}",
+		http.HandlerFunc(
+			productServices.GetProductByIDHandler,
+		),
+	).Methods("GET")
 
 	// Create HTTP server
 	s.server = &http.Server{

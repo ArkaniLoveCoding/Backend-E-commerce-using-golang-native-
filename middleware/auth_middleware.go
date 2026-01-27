@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -10,7 +11,9 @@ import (
 	"github.com/ArkaniLoveCoding/Golang-Restfull-Api-MySql/utils"
 )
 
-func AuthenticateProfile (next http.Handler) http.Handler {
+// middleware func to get id from user token as a user token
+
+func AuthenticateForIdUser (next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		token_header := r.Header.Get("Authorization")
@@ -46,10 +49,12 @@ func AuthenticateProfile (next http.Handler) http.Handler {
 	})
 }
 
+// func that wants to return id from user token as a token id
+
 func GetValueTokenID (w http.ResponseWriter, r *http.Request) (uuid.UUID, error)  {
 
 	user := r.Context().Value("id")
-	if user == "" {
+	if user == "" || user == nil {
 		utils.WriteError(w, http.StatusBadRequest, "Failed to get id of the user !", false)
 		return uuid.Nil, nil
 	}
@@ -63,16 +68,52 @@ func GetValueTokenID (w http.ResponseWriter, r *http.Request) (uuid.UUID, error)
 
 }
 
-// later,  i will fix it
+// middleware func for authenticate role user 
 
-func GetValueTokenRole (w http.ResponseWriter, r *http.Request) (string, error)  {
+func AuthenticateForRole (next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-	role := r.Context().Value("role")
-	if role == "" {
-		utils.WriteError(w, http.StatusBadRequest, "Failed to get role of the user!", false)
+		header_token := r.Header.Get("Authorization")
+		if header_token == "" {
+			utils.WriteError(w, http.StatusBadRequest, "Failed to get token!", false)
+			return 
+		}
+
+		token_bearer := strings.TrimPrefix(header_token, "Bearer ")
+		if token_bearer == "" {
+			utils.WriteError(w, http.StatusBadRequest, "Failed to convert into bearer token as a token!", false)
+			return
+		}
+
+		token_key, err  := utils.ValidateToken(token_bearer)
+		if err != nil {
+			utils.WriteError(w, http.StatusBadRequest, "Failed to validate token as a token from user!", err.Error())
+			return 
+		}
+
+		context_save := context.WithValue(r.Context(), "role", token_key.Role)
+		r = r.WithContext(context_save)
+
+		next.ServeHTTP(w, r)
+
+	})
+}
+
+// func that wants to take the role from token as a user role default 
+
+func GetValueTokenRole (w http.ResponseWriter, r *http.Request) (string, error) {
+
+	role_user := r.Context().Value("role")
+	if role_user == "" || role_user == nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to get user role, because the data is nothing!", false)
 		return "", nil
 	}
 
-	return "", nil
+	role_string, ok := role_user.(string)
+	if !ok {
+		return "", errors.New("Failed to convert from type any to string!")
+	}
+
+	return role_string, nil
 
 }

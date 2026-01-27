@@ -26,8 +26,6 @@ func NewHandlerUser(db types.UserStore) *HandleRequest {
 	return &HandleRequest{db: db}
 }
 
-//
-
 // this is for router that token is verified in their function!
 
 type HandleRequestForAuthenticate struct {
@@ -38,20 +36,6 @@ func NewHandlerUserForAuthenticate (db types.UserStore) *HandleRequestForAuthent
 	return &HandleRequestForAuthenticate{db: db}
 }
 
-//
-
-
-func (h *HandleRequest) RegistrationUserHandler(router *mux.Router) {
-	router.HandleFunc("/registration", h.RegistrationFunc).Methods("POST")
-}
-
-func (h *HandleRequest) LoginUserHandler(router *mux.Router) {
-	router.HandleFunc("/login", h.LoginFunc).Methods("POST")
-}
-
-func (h *HandleRequestForAuthenticate) GetProfileHandler(router *mux.Router) {
-	router.HandleFunc("/profile", h.GetProfileUser).Methods("GET")
-}
 
 func (h *HandleRequest) UpdateTokenFunc (id uuid.UUID, token string, token_refresh string) error {
 
@@ -102,6 +86,9 @@ func (h *HandleRequest) RegistrationFunc(w http.ResponseWriter, r *http.Request)
 	ctx, cancle := context.WithTimeout(context.Background(), time.Second * 10)
 	defer cancle()
 	time_created := time.Now().UTC()
+	time_updated := time.Now().UTC()
+	time_format_created := time_created.Format("2006-01-02")
+	time_format_updated := time_updated.Format("2006-01-02")
 
 	var user = &types.User{
 		Id: uuid.New(),
@@ -114,7 +101,21 @@ func (h *HandleRequest) RegistrationFunc(w http.ResponseWriter, r *http.Request)
 		Role: request.Role,
 		Token: request.Token,
 		Rerfresh_token: request.Rerfresh_token,
-		CreatedAt: time_created,
+		Created_at: time_created,
+		Updated_at: time_updated,
+	}
+
+	user_response := types.UserResponse{
+		Id: user.Id,
+		Firstname: user.Firstname,
+		Lastname: user.Lastname,
+		Password: user.Password,
+		Email: user.Email,
+		Country: user.Country,
+		Address: user.Address,
+		Role: user.Role,
+		Created_at: time_format_created,
+		Updated_at: time_format_updated,
 	}
 
 	if err := h.db.CreateUser(ctx, user); err != nil {
@@ -122,7 +123,7 @@ func (h *HandleRequest) RegistrationFunc(w http.ResponseWriter, r *http.Request)
 		return      
 	}
 
-	utils.WriteSuccess(w, http.StatusCreated, "Success to create new user !", user)
+	utils.WriteSuccess(w, http.StatusCreated, "Success to create new user !", user_response)
 }
 
 func (h *HandleRequest) LoginFunc(w http.ResponseWriter, r *http.Request) {
@@ -149,6 +150,11 @@ func (h *HandleRequest) LoginFunc(w http.ResponseWriter, r *http.Request) {
 		return 
 	}
 
+	if user == nil {
+		utils.WriteError(w, http.StatusBadRequest, "Cannot find the email !", false)
+		return
+	}
+
 	if err := utils.ComparePassword(user.Password, request.Password); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Failed to compare the password!", err.Error())
 		return
@@ -171,9 +177,10 @@ func (h *HandleRequest) LoginFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// place to take the token after the token has been created
-	fmt.Println(token)
-	fmt.Println(refresh_token)
+	time_created := time.Now().UTC()
+	time_updated := time.Now().UTC()
+	time_format_created := time_created.Format("2006-01-02")
+	time_format_updated := time_updated.Format("2006-01-02")
 
 	user_response := types.UserResponse{
 		Id: user.Id,
@@ -184,16 +191,17 @@ func (h *HandleRequest) LoginFunc(w http.ResponseWriter, r *http.Request) {
 		Country: user.Country,
 		Address: user.Address,
 		Role: user.Role,
-		Token: user.Token,
-		Rerfresh_token: user.Rerfresh_token,
-		Created_at: user.CreatedAt,
+		Token: token,
+		Rerfresh_token: refresh_token,
+		Created_at: time_format_created,
+		Updated_at: time_format_updated,
 	}
 
 	utils.WriteSuccess(w, http.StatusOK, "Sucessfully!", user_response)
 
 }
 
-func (h *HandleRequestForAuthenticate) GetProfileUser (w http.ResponseWriter, r *http.Request) {
+func (h *HandleRequestForAuthenticate) GetProfileUser(w http.ResponseWriter, r *http.Request) {
 
 	user_id, err := middleware.GetValueTokenID(w, r)
 	if err != nil {
@@ -207,6 +215,106 @@ func (h *HandleRequestForAuthenticate) GetProfileUser (w http.ResponseWriter, r 
 		return 
 	}
 
-	utils.WriteSuccess(w, http.StatusAccepted, "Successfully to get profile!", user)
+	user_response := types.UserResponse{
+		Id: user.Id,
+		Firstname: user.Firstname,
+		Lastname: user.Lastname,
+		Password: user.Password,
+		Email: user.Email,
+		Country: user.Country,
+		Address: user.Address,
+		Role: user.Role,
+	}
+
+	utils.WriteSuccess(w, http.StatusAccepted, "Successfully to get profile!", user_response)
+
+}
+
+func (h *HandleRequest) UpdateUser(w http.ResponseWriter, r *http.Request) {
+
+	var validate *validator.Validate
+	var request_update types.UserUpdate
+
+	if err := utils.DecodeData(r, &request_update); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to decode data!", err.Error())
+		return
+	}
+
+	validate = validator.New()
+	if err := validate.Struct(&request_update); err != nil {
+		var errorValidate []string
+		for _, errors := range err.(validator.ValidationErrors) {
+			errorValidate = append(errorValidate, fmt.Sprintf("Fatal Error ! : %v, %v", errors.Field(), errors.Tag()))
+			return
+		}
+	}
+
+	vars_id := mux.Vars(r)
+	id := vars_id["id"]
+
+	if id == "" {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to detect id !", false)
+		return 
+	}
+
+	uuid_parse_id, err := uuid.Parse(id)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to convert data as a uuid!", err.Error())
+		return 
+	}
+
+	users, err := h.db.GetUserById(uuid_parse_id)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to get id!", err.Error())
+		return 
+	}
+
+	if users == nil {
+		utils.WriteError(w, http.StatusBadRequest, "Cannot find the data from id!", false)
+		return
+	}
+
+	ctx, cancle := context.WithTimeout(r.Context(), time.Second * 10)
+	defer cancle()
+
+
+	if err := h.db.UpdateDataUser(
+		uuid_parse_id, 
+		ctx,
+		request_update.Firstname,
+		request_update.Lastname,
+		request_update.Password,
+		request_update.Email,
+		request_update.Country,
+		request_update.Address, 
+		); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to update token!", err.Error())
+		return 
+	}
+	
+	var user = &types.User{
+		Id: uuid_parse_id,
+		Firstname: request_update.Firstname,
+		Lastname: request_update.Lastname,
+		Password: request_update.Password,
+		Email: request_update.Email,
+		Country: request_update.Country,
+		Address: request_update.Address,
+	}
+
+
+	user_update_response := types.UserUpdateResponse{
+		Id: user.Id,
+		Firstname: user.Firstname,
+		Lastname: user.Lastname,
+		Password: user.Password,
+		Email: user.Email,
+		Country: user.Country,
+		Address: user.Address,
+		Created_at: user.Created_at.Format("2006-01-02"),
+		Updated_at: time.Now().UTC().Format("2006-01-02"),
+	}
+
+	utils.WriteSuccess(w, http.StatusOK, "Successfully to update data!", user_update_response)
 
 }

@@ -8,8 +8,8 @@ import (
 )
 
 type ProductStore interface {
-	GetAllProduct([]Products) (*Products, error)
-	GetProductByID(id string) (*Products, error)
+	GetAllProduct() ([]Products, error)
+	GetProductByID(id uuid.UUID) (*Products, error)
 	CreateNewProduct(ctx context.Context, products *Products) error
 }
 
@@ -30,7 +30,7 @@ type ProductResponse struct {
 	Stock 			int 		`json:"stock" validate:"required,min=2,max=100"`
 	Price 			string 		`json:"price" validate:"required,min=2,max=100"`
 	Expired 		string		`json:"expired" validate:"required,min=2,max=100"`
-	Category 		string 		`json:"category" validate:"required"`
-	Created_at 		time.Time 	`json:"created_at"`
-	Updated_at 		time.Time 	`json:"updated_at"`
+	Category 		string 		`json:"category" validate:"required,min=2,max=100"`
+	Created_at 		string  	`json:"created_at"`
+	Updated_at 		string  	`json:"updated_at"`
 }

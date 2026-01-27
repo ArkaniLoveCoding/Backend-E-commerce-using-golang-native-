@@ -82,15 +82,24 @@ func ValidateToken (tokenAuth string) (*SignedDetails, error) {
 		return nil, errors.New("Failed to load env as you want!")
 	}
 	token := os.Getenv("JWT_SECRET_KEY")
+	token_refresh_env := os.Getenv("JWT_SECRET_KEY_REFRESH")
 
-	token_final, err := jwt.ParseWithClaims(token, claims, func(t *jwt.Token) (any, error) {
+	token_not_refresh, err := jwt.ParseWithClaims(tokenAuth, claims, func(t *jwt.Token) (any, error) {
 		return []byte(token), nil
 	})
 	if err != nil {
-		return nil, errors.New("Failed to load the jwt!")
+		return nil, errors.New(err.Error())
 	}
 
-	if _, ok := token_final.Method.(*jwt.SigningMethodHMAC); !ok {
+	token_refresh, err := jwt.ParseWithClaims(tokenAuth, claims, func(t *jwt.Token) (any, error) {
+		return []byte(token_refresh_env), nil
+	})
+
+	if _, ok := token_not_refresh.Method.(*jwt.SigningMethodHMAC); !ok {
+		return nil, errors.New("Failed to convert data!")
+	}
+
+	if _, ok := token_refresh.Method.(*jwt.SigningMethodHMAC); !ok {
 		return nil, errors.New("Failed to convert data!")
 	}
 
