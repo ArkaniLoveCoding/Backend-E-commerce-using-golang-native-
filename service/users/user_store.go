@@ -203,3 +203,28 @@ func (s *Store) UpdateDataUser(
 	return nil
 
 }
+
+func (s *Store) DeleteUsersOnlyAdmin(id uuid.UUID, ctx context.Context) error {
+
+	query := `
+		DELETE FROM users WHERE id = $1; 
+	`
+	var users types.User
+
+	result, err := s.store.ExecContext(ctx, query, users.Id)
+	if err != nil {
+		return errors.New("Failed to execute the context from db" + err.Error())
+	}
+	
+	rows_affected, err := result.RowsAffected()
+	if err != nil {
+		return errors.New("Failed to get the rows from db, no one be execute from your db!")
+	}
+
+	if rows_affected == 0 {
+		return errors.New("Failed to checking the rows affected from your db!")
+	}
+
+	return nil
+
+}

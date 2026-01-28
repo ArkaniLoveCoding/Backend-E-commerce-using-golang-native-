@@ -11,6 +11,7 @@ type ProductStore interface {
 	GetAllProduct() ([]Products, error)
 	GetProductByID(id uuid.UUID) (*Products, error)
 	CreateNewProduct(ctx context.Context, products *Products) error
+	DeleteProductsOnlyAdmin(id uuid.UUID, ctx context.Context) error 
 }
 
 type Products struct {

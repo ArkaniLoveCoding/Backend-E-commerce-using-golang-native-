@@ -100,3 +100,28 @@ func (s *Store) CreateNewProduct(ctx context.Context, products *types.Products) 
 	return nil
 
 } 
+
+func (s *Store) DeleteProductsOnlyAdmin(id uuid.UUID, ctx context.Context) error {
+
+	query := `
+		DELETE FROM users WHERE id = $1;
+	`
+	var users types.User
+
+	result, err := s.store.ExecContext(ctx, query, users.Id)
+	if err != nil {
+		return errors.New("Failed to get id from users db!" + err.Error())
+	}
+
+	rows_affected, err := result.RowsAffected()
+	if err != nil {
+		return errors.New("Failed to check the rows from db!" + err.Error())
+	}
+
+	if rows_affected == 0 {
+		return errors.New("No one data is executed in your db, thats why the rows is confirmed zero value!")
+	}
+
+	return nil
+
+}

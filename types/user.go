@@ -25,6 +25,7 @@ type UserStore interface {
 		country string,
 		address string,
 		) error
+	DeleteUsersOnlyAdmin(id uuid.UUID, ctx context.Context) error
 }
 
 type User struct {

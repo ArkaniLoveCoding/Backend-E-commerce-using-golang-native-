@@ -104,3 +104,7 @@ func (m *mockStore) UpdateDataUser(
 	) error {
 	return nil
 }
+
+func (m *mockStore) DeleteUsersOnlyAdmin(id uuid.UUID, ctx context.Context) error {
+	return nil
+}

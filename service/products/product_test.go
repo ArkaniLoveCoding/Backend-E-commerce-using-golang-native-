@@ -76,3 +76,9 @@ func (m *mockStore) CreateNewProduct(ctx context.Context, products *types.Produc
 	return nil
 
 }
+
+func (m *mockStore) DeleteProductsOnlyAdmin(id uuid.UUID, ctx context.Context) error {
+
+	return nil
+
+}

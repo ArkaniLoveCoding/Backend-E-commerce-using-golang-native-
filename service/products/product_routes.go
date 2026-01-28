@@ -192,3 +192,49 @@ func (h *HandleRequest) GetAllProduct(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func (h *HandleRequest) DeleteProduct(w http.ResponseWriter, r *http.Request) {
+
+	middleware_checking_role, err := middleware.GetValueTokenRole(w, r)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to get role from jwt token!", err.Error())
+		return 
+	}
+
+	if middleware_checking_role != "ADMIN" {
+		utils.WriteError(w, http.StatusBadRequest, "Only admin can delete one of the data of the product db!", false)
+		return
+	}
+
+	vars_id := mux.Vars(r)
+	id := vars_id["id"]
+
+	if id == "" {
+		utils.WriteError(w, http.StatusBadRequest, "the id that you want to be a params is nil!", false)
+		return 
+	}
+
+	uuid_parse_id, err := uuid.Parse(id)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to convert the data to uuid!", err.Error())
+		return
+	}
+
+	users, err := h.db.GetProductByID(uuid_parse_id)
+
+	if users == nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to get users from db use id at param !", false)
+		return 
+	}
+
+	ctx, cancle := context.WithTimeout(context.Background(), time.Second * 10)
+	defer cancle()
+
+	if err := h.db.DeleteProductsOnlyAdmin(uuid_parse_id, ctx); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to delete the product!", err.Error())
+		return 
+	}
+
+	utils.WriteSuccess(w, http.StatusOK, "Successfully to delete the one of data of the product db!", true)
+	
+}
+

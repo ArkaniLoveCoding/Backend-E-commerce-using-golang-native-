@@ -263,6 +263,18 @@ func (h *HandleRequest) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		return 
 	}
 
+	middleware_check_account_id, err := middleware.GetValueTokenID(w, r)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to get token id from jwt token!", err.Error())
+		return 
+	}
+
+	if middleware_check_account_id != uuid_parse_id {
+		utils.WriteError(w, http.StatusInternalServerError, "Cannot change other profile!", false)
+		return
+	}
+
+
 	users, err := h.db.GetUserById(uuid_parse_id)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Failed to get id!", err.Error())
@@ -311,10 +323,59 @@ func (h *HandleRequest) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		Email: user.Email,
 		Country: user.Country,
 		Address: user.Address,
-		Created_at: user.Created_at.Format("2006-01-02"),
+		Created_at: users.Created_at.Format("2006-01-02"),
 		Updated_at: time.Now().UTC().Format("2006-01-02"),
 	}
 
 	utils.WriteSuccess(w, http.StatusOK, "Successfully to update data!", user_update_response)
+}
+
+func (h *HandleRequest) DeleteUser(w http.ResponseWriter, r *http.Request) {
+
+	middleware_checking_role, err := middleware.GetValueTokenRole(w, r)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Something went wrong!", err.Error())
+		return 
+	}
+
+	if middleware_checking_role != "ADMIN" {
+		utils.WriteError(w, http.StatusBadGateway, "Only admin can delete the other users account!", false)
+		return
+	}
+
+	vars_id := mux.Vars(r)
+	id := vars_id["id"]
+
+	if id == "" {
+		utils.WriteError(w, http.StatusBadRequest, "the id that you want to delete is nil!", false)
+		return 
+	}
+
+	uuid_parse_id, err := uuid.Parse(id)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to convert into uuid type!", err.Error())
+		return 
+	}
+
+	users, err := h.db.GetUserById(uuid_parse_id)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to checking data from db!", err.Error())
+		return 
+	}
+
+	if users == nil {
+		utils.WriteError(w, http.StatusBadRequest, "The users is nil from db!", false)
+		return 
+	}
+
+	ctx, cancle := context.WithTimeout(context.Background(), time.Second * 10)
+	defer cancle()
+
+	if err := h.db.DeleteUsersOnlyAdmin(uuid_parse_id, ctx); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to delete the users from db only admin!", err.Error())
+		return
+	}
+
+	utils.WriteSuccess(w, http.StatusOK, "Successfully to delete users account as a admin!", true)
 
 }
