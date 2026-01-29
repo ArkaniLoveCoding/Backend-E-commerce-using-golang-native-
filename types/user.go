@@ -24,6 +24,7 @@ type UserStore interface {
 		email string,
 		country string,
 		address string,
+		user *User,
 		) error
 	DeleteUsersOnlyAdmin(id uuid.UUID, ctx context.Context) error
 }

@@ -285,9 +285,25 @@ func (h *HandleRequest) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		utils.WriteError(w, http.StatusBadRequest, "Cannot find the data from id!", false)
 		return
 	}
+	
+	hashed_password, err := utils.HashPassword(request_update.Password)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to load hashed password!", err.Error())
+		return
+	}
 
 	ctx, cancle := context.WithTimeout(r.Context(), time.Second * 10)
 	defer cancle()
+
+	var user = &types.User{
+		Id: uuid_parse_id,
+		Firstname: request_update.Firstname,
+		Lastname: request_update.Lastname,
+		Password: hashed_password,
+		Email: request_update.Email,
+		Country: request_update.Country,
+		Address: request_update.Address,
+	}
 
 
 	if err := h.db.UpdateDataUser(
@@ -299,19 +315,10 @@ func (h *HandleRequest) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		request_update.Email,
 		request_update.Country,
 		request_update.Address, 
+		user,
 		); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Failed to update token!", err.Error())
 		return 
-	}
-	
-	var user = &types.User{
-		Id: uuid_parse_id,
-		Firstname: request_update.Firstname,
-		Lastname: request_update.Lastname,
-		Password: request_update.Password,
-		Email: request_update.Email,
-		Country: request_update.Country,
-		Address: request_update.Address,
 	}
 
 
@@ -323,6 +330,9 @@ func (h *HandleRequest) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		Email: user.Email,
 		Country: user.Country,
 		Address: user.Address,
+		Role: users.Role,
+		Token: users.Token,
+		Rerfresh_token: users.Rerfresh_token,
 		Created_at: users.Created_at.Format("2006-01-02"),
 		Updated_at: time.Now().UTC().Format("2006-01-02"),
 	}

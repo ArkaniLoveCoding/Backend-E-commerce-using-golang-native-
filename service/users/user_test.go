@@ -100,7 +100,8 @@ func (m *mockStore) UpdateDataUser(
 	password string,
 	email string,
 	country string,
-	address string, 
+	address string,
+	user *types.User, 
 	) error {
 	return nil
 }

@@ -167,6 +167,7 @@ func (s *Store) UpdateDataUser(
 	email string,
 	country string,
 	address string,
+	users *types.User,
 	) error {
 
 	query := `
@@ -179,25 +180,28 @@ func (s *Store) UpdateDataUser(
 			address = $7
 		WHERE id = $1;
 	`
+	var u = users
 
-	result, err := s.store.ExecContext(
+	if err := s.store.QueryRowContext(
 		ctx,
 		query,
+		id,
 		firstname,
 		lastname,
 		password,
 		email,
 		country,
 		address,
-		id,
-	)
-	if err != nil {
+	).Scan(
+		&u.Id,
+		&u.Firstname,
+		&u.Lastname,
+		&u.Password,
+		&u.Email,
+		&u.Country,
+		&u.Address,
+	); err != nil {
 		return nil
-	}
-
-	rows_affected, err := result.RowsAffected()
-	if rows_affected == 0 {
-		return errors.New("No one data in a sql rows that updated!")
 	}
 
 	return nil
