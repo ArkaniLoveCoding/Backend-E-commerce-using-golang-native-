@@ -39,7 +39,10 @@ func NewHandlerUserForAuthenticate (db types.UserStore) *HandleRequestForAuthent
 
 func (h *HandleRequest) UpdateTokenFunc (id uuid.UUID, token string, token_refresh string) error {
 
-	err := h.db.UpdateToken(id, token, token_refresh)
+	ctx, cancle := context.WithTimeout(context.Background(), time.Second * 10)
+	defer cancle()
+
+	err := h.db.UpdateToken(id, token, token_refresh, ctx)
 	if err != nil {
 		return errors.New("Failed to update the token!" + err.Error())
 	}
@@ -387,5 +390,75 @@ func (h *HandleRequest) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.WriteSuccess(w, http.StatusOK, "Successfully to delete users account as a admin!", true)
+
+}
+
+func (h *HandleRequest) GetAllUser(w http.ResponseWriter, r *http.Request) {
+
+	middleware_checking_role, err := middleware.GetValueTokenRole(w, r)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to get role from middleware!", err.Error())
+		return 
+	}
+
+	if middleware_checking_role != "ADMIN" {
+		utils.WriteError(w, http.StatusBadRequest, "Only admin can access this method!", false)
+	}
+
+	users, err := h.db.GetAllUser()
+	if err != nil {
+		utils.WriteError(w, http.StatusBadGateway, "Failed to get all data of user!", err.Error())
+		return 
+	}
+
+	utils.WriteSuccess(w, http.StatusOK, "Successfully to get all the data from users db!", users)
+
+}
+
+func (h *HandleRequest) GetOneUsersById(w http.ResponseWriter, r *http.Request) {
+
+	vars_id := mux.Vars(r)
+	id := vars_id["id"]
+
+	if id == "" {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to load params because the params is nill!", false)
+		return 
+	}
+
+	uuid_parse_id, err := uuid.Parse(id)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Faield to convert data into uuid type!", err.Error())
+		return 
+	}
+
+	users, err := h.db.GetUserById(uuid_parse_id)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Faile dot get one id from db!", err.Error())
+		return 
+	}
+
+	if users == nil {
+		utils.WriteError(w, http.StatusBadRequest, "Faield to get users because users is nil!", false)
+	}
+
+	time_created_format := users.Created_at.Format("2006-01-02")
+	time_updated_format := users.Updated_at.Format("2006-01-02")
+
+	user_response := types.UserResponse{
+		Id: users.Id,
+		Firstname: users.Firstname,
+		Lastname: users.Lastname,
+		Password: users.Password,
+		Email: users.Email,
+		Country: users.Country,
+		Address: users.Address,
+		Role: users.Role,
+		Token: users.Token,
+		Rerfresh_token: users.Rerfresh_token,
+		Created_at: time_created_format,
+		Updated_at: time_updated_format,
+	}
+
+	utils.WriteSuccess(w, http.StatusOK, "Successfully to get one data from users db!", user_response)
 
 }

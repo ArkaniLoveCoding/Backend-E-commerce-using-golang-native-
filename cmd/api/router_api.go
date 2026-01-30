@@ -92,6 +92,21 @@ func (s *ApiServer) Run() error {
 		)),
 	).Methods("DELETE")
 
+	// get all users
+	subRouter.Handle(
+		"/users",
+		middleware.AuthenticateForRole(http.HandlerFunc(
+			userService.GetAllUser,
+		)),
+	).Methods("GET")
+
+	// get one users
+	subRouter.Handle(
+		"/users/{id}",
+		http.HandlerFunc(
+			userService.GetOneUsersById,
+		),
+	).Methods("GET")
 
 	// products router (this router is compeletly authenticate for a several methods)
 
@@ -134,6 +149,14 @@ func (s *ApiServer) Run() error {
 			productServices.DeleteProduct,
 		)),
 	).Methods("DELETE")
+
+	// update product (admin only)
+	subRouter.Handle(
+		"/products/{id}",
+		middleware.AuthenticateForRole(http.HandlerFunc(
+			productServices.UpdateProductsOnlyAdmin,
+		)),
+	).Methods("PUT")
 
 	// Create HTTP server
 	s.server = &http.Server{

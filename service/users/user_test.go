@@ -67,29 +67,41 @@ func TestUser(t *testing.T) {
 type mockStore struct {}
 
 func (m *mockStore) GetUserByEmail(email string) (*types.User, error) {
-	return nil, nil
+	
+
+
 }
 
 func (m *mockStore) GetUserById(id uuid.UUID) (*types.User, error) {
-	return nil, nil
+	
+
+
 }
 
 func (m *mockStore) CreateUser(context.Context, *types.User) error {
-	return nil
+	
+
+
 }
 
 func (m *mockStore) GetAllUser() ([]types.User, error) {
-	return nil, nil
+	
+
+
 }
 
 func (m *mockStore) UpdateToken(
-	id uuid.UUID, token string, token_refresh string,
+	id uuid.UUID, token string, token_refresh string, ctx context.Context,
 ) error {
-	return nil
+	
+
+
 }
 
 func (m *mockStore) GetUsersRole(email string) (*types.User, error) {
-	return nil, nil
+	
+
+
 }
 
 func (m *mockStore) UpdateDataUser(
@@ -103,9 +115,13 @@ func (m *mockStore) UpdateDataUser(
 	address string,
 	user *types.User, 
 	) error {
-	return nil
+	
+
+
 }
 
 func (m *mockStore) DeleteUsersOnlyAdmin(id uuid.UUID, ctx context.Context) error {
-	return nil
+	
+	
+
 }

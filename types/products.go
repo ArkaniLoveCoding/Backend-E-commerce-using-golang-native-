@@ -12,6 +12,15 @@ type ProductStore interface {
 	GetProductByID(id uuid.UUID) (*Products, error)
 	CreateNewProduct(ctx context.Context, products *Products) error
 	DeleteProductsOnlyAdmin(id uuid.UUID, ctx context.Context) error 
+	UpdateProductsOnlyAdmin(
+		id uuid.UUID,
+		name string,
+		stock int,
+		category string,
+		price string,
+		expired string,
+		ctx_update context.Context,
+	) error
 }
 
 type Products struct {
@@ -26,6 +35,17 @@ type Products struct {
 }
 
 type ProductResponse struct {
+	Id				uuid.UUID 	`json:"id"`
+	Name 			string 		`json:"name" validate:"required,min=2,max=100"`
+	Stock 			int 		`json:"stock" validate:"required,min=2,max=100"`
+	Price 			string 		`json:"price" validate:"required,min=2,max=100"`
+	Expired 		string		`json:"expired" validate:"required,min=2,max=100"`
+	Category 		string 		`json:"category" validate:"required,min=2,max=100"`
+	Created_at 		string  	`json:"created_at"`
+	Updated_at 		string  	`json:"updated_at"`
+}
+
+type PayloadUpdate struct {
 	Id				uuid.UUID 	`json:"id"`
 	Name 			string 		`json:"name" validate:"required,min=2,max=100"`
 	Stock 			int 		`json:"stock" validate:"required,min=2,max=100"`

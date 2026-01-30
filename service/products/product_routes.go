@@ -238,3 +238,96 @@ func (h *HandleRequest) DeleteProduct(w http.ResponseWriter, r *http.Request) {
 	
 }
 
+func (h *HandleRequest) UpdateProductsOnlyAdmin(w http.ResponseWriter, r *http.Request) {
+
+	var validate *validator.Validate
+	var payload_update types.PayloadUpdate
+
+	if err := utils.DecodeData(r, &payload_update); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to update the product data!", err.Error())
+		return
+	}
+
+	validate = validator.New()
+	if err := validate.Struct(&payload_update); err != nil {
+		var errors []string
+		for _, errorValidate := range err.(validator.ValidationErrors) {
+			errors = append(errors, fmt.Sprintf("Fatal Error ! : %v, %v", errorValidate.Field(), errorValidate.Tag()))
+		}
+	}
+
+	middleware_get_role, err := middleware.GetValueTokenRole(w, r)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to get the role from token!", err.Error())
+		return
+	}
+
+	if middleware_get_role != "ADMIN" {
+		utils.WriteError(w, http.StatusBadRequest, "the role cant be access here is admin role!", false)
+		return
+	}
+
+	vars_id := mux.Vars(r)
+	id := vars_id["id"]
+
+	if id == "" {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to get params from id postman!", false)
+	}
+
+	uuid_parse, err := uuid.Parse(id)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to convert from string into an uuid type !", err.Error())
+		return
+	}
+
+	products, err := h.db.GetProductByID(uuid_parse)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to get data products from id!", err.Error())
+		return 
+	}
+
+	if products == nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to get products because is nill!", false)
+		return
+	}
+
+	var product = &types.Products{
+		Id: payload_update.Id,
+		Name: payload_update.Name,
+		Price: payload_update.Price,
+		Stock: payload_update.Stock,
+		Category: payload_update.Category,
+		Expired: payload_update.Expired,
+	}
+
+	ctx, cancle := context.WithTimeout(r.Context(), time.Second * 10)
+	defer cancle()
+
+	if err := h.db.UpdateProductsOnlyAdmin(
+		uuid_parse,
+		payload_update.Name,
+		payload_update.Stock,
+		payload_update.Category,
+		payload_update.Price,
+		payload_update.Expired,
+		ctx,
+	); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to update the data of products!", err.Error())
+		return
+	}
+
+	product_response := types.ProductResponse{
+		Id: product.Id,
+		Name: product.Name,
+		Stock: product.Stock,
+		Price: product.Price,
+		Category: product.Category,
+		Expired: product.Category,
+		Created_at: products.Created_at.Format("2006-01-02"),
+		Updated_at: products.Updated_at.Format("2006-01-02"),
+	}
+
+	utils.WriteSuccess(w, http.StatusOK, "Successfully to update the products!", product_response)
+
+}
+

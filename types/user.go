@@ -9,7 +9,7 @@ import (
 
 
 type UserStore interface {
-	UpdateToken(id uuid.UUID, token string, token_refresh string) error
+	UpdateToken(id uuid.UUID, token string, token_refresh string, ctx context.Context) error
 	GetUserByEmail(email string) (*User, error)
 	GetUserById(id uuid.UUID) (*User, error)
 	CreateUser(context.Context, *User) error 

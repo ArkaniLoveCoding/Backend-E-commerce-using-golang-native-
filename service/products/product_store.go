@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -67,13 +68,27 @@ func (s *Store) GetProductByID(id uuid.UUID) (*types.Products, error) {
 
 func (s *Store) CreateNewProduct(ctx context.Context, products *types.Products) error {
 
+	tx_options := &sql.TxOptions{
+		Isolation: sql.LevelLinearizable,
+		ReadOnly: false,
+	}
+	ctx, cancle := context.WithTimeout(context.Background(), time.Second * 10)
+	defer cancle()
+
+	tx, err := s.store.BeginTxx(ctx, tx_options)
+	if err != nil {
+		return errors.New("Failed to doing some transactions!")
+	}
+
+	defer tx.Rollback()
+
 	query := `
 	INSERT INTO product_clients (id, name, stock, price, expired, category, created_at, updated_at)
 	VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 	RETURNING *
 	`
 
-	if err := s.store.QueryRowContext(
+	if err := tx.QueryRowContext(
 		ctx, 
 		query,
 		products.Id,
@@ -103,12 +118,25 @@ func (s *Store) CreateNewProduct(ctx context.Context, products *types.Products) 
 
 func (s *Store) DeleteProductsOnlyAdmin(id uuid.UUID, ctx context.Context) error {
 
+	tx_options := &sql.TxOptions{
+		Isolation: sql.LevelLinearizable,
+		ReadOnly: false,
+	}
+	ctx, cancle := context.WithTimeout(context.Background(), time.Second * 10)
+	defer cancle()
+
+	tx, err := s.store.BeginTxx(ctx, tx_options)
+	if err != nil {
+		return errors.New("Failed to doing some transactions!")
+	}
+
+	defer tx.Rollback()
+
 	query := `
 		DELETE FROM users WHERE id = $1;
 	`
-	var users types.User
 
-	result, err := s.store.ExecContext(ctx, query, users.Id)
+	result, err := tx.ExecContext(ctx, query, id)
 	if err != nil {
 		return errors.New("Failed to get id from users db!" + err.Error())
 	}
@@ -120,6 +148,66 @@ func (s *Store) DeleteProductsOnlyAdmin(id uuid.UUID, ctx context.Context) error
 
 	if rows_affected == 0 {
 		return errors.New("No one data is executed in your db, thats why the rows is confirmed zero value!")
+	}
+
+	return nil
+
+}
+
+func (s *Store) UpdateProductsOnlyAdmin(
+	id uuid.UUID, 
+	name string,
+	stock int,
+	category string,
+	expired string,
+	price string,
+	ctx_update context.Context,
+) error {
+
+	tx_options := &sql.TxOptions{
+		Isolation: sql.LevelLinearizable,
+		ReadOnly: false,
+	}
+	ctx, cancle := context.WithTimeout(context.Background(), time.Second * 10)
+	defer cancle()
+
+	tx, err := s.store.BeginTxx(ctx, tx_options)
+	if err != nil {
+		return errors.New("Failed to doing some transactions!")
+	}
+
+	query := `
+		UPDATE product_clients 
+		SET name = $2,
+			price = $3,
+			stock = $4,
+			category = $5,
+			expired = $6
+		WHERE id = $1
+		RETURNING *;
+	`
+
+	result, err := tx.ExecContext(
+		ctx_update, 
+		query,
+		id,
+		name,
+		price,
+		stock,
+		category,
+		expired,
+	)
+	if err != nil {
+		return errors.New("Failed to execute the update query!")
+	}
+
+	result_affected, err := result.RowsAffected()
+	if err != nil {
+		return errors.New("Failed to scan the rows affected in your db!")
+	}
+
+	if result_affected == 0 {
+		return errors.New("no one data is changing in your db!")
 	}
 
 	return nil

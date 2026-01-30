@@ -14,9 +14,8 @@ import (
 	"github.com/ArkaniLoveCoding/Golang-Restfull-Api-MySql/types"
 )
 
-type mockStore struct {}
 
-func TestProducts(t *testing.T) {
+func TestProductsCreate(t *testing.T) {
 
 	userStore := &mockStore{}
 	Handler := NewHandlerProduct(userStore)
@@ -42,6 +41,9 @@ func TestProducts(t *testing.T) {
 			"/products",
 			bytes.NewBuffer(encoding),
 		)
+		if err != nil {
+			t.Errorf("Failed to make new http request!")
+		}
 		
 		rr := httptest.NewRecorder()
 		router := mux.NewRouter()
@@ -59,26 +61,56 @@ func TestProducts(t *testing.T) {
 
 }
 
+type mockStore struct {
+	DeleteProductFn func(id uuid.UUID, ctx context.Context) error 
+	CreateProductFn func(ctx context.Context, product *types.Products) error
+	GetOneProductFn func(id uuid.UUID) (*types.Products, error)
+	GetAllProductFn func() ([]types.Products, error)
+	UpdateProductFn func(
+		id uuid.UUID,
+		ctx context.Context,
+		name string,
+		price string,
+		stock int, 
+		category string,
+		expired string, 
+	) error 
+}
+
 func (m *mockStore) GetAllProduct() ([]types.Products, error) {
 	
-	return nil, nil
+	return m.GetAllProductFn()
 
 }
 
 func (m *mockStore) GetProductByID(id uuid.UUID) (*types.Products, error) {
 
-	return nil, nil
+	return m.GetOneProductFn(id)
 
 }
 
 func (m *mockStore) CreateNewProduct(ctx context.Context, products *types.Products) error {
 
-	return nil
+	return m.CreateProductFn(ctx, products)
 
 }
 
 func (m *mockStore) DeleteProductsOnlyAdmin(id uuid.UUID, ctx context.Context) error {
 
-	return nil
+	return m.DeleteProductFn(id, ctx)
+
+}
+
+func (m *mockStore) UpdateProductsOnlyAdmin(
+	id uuid.UUID,
+	name string,
+	stock int,
+	category string,
+	price string,
+	expired string,
+	ctx_update context.Context,
+) error {
+
+	return m.UpdateProductFn(id, ctx_update, name, price, stock, category, expired)
 
 }

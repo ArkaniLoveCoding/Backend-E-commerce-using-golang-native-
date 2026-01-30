@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -20,7 +21,21 @@ func NewStore(store *sqlx.DB) *Store {
 	return &Store{store: store}
 }
 
-func (s *Store) UpdateToken(id uuid.UUID, token string, token_refresh string) error {
+func (s *Store) UpdateToken(id uuid.UUID, token string, token_refresh string, ctx context.Context) error {
+
+	tx_options := &sql.TxOptions{
+		Isolation: sql.LevelSerializable,
+		ReadOnly: false,
+	}
+	ctx, cancle := context.WithTimeout(context.Background(), time.Second * 10)
+	defer cancle()
+
+	tx, err := s.store.BeginTxx(ctx, tx_options)
+	if err != nil {
+		return errors.New("Failed to doing transactions!")
+	}
+
+	defer tx.Rollback()
 
 	query := `
 		UPDATE users 
@@ -28,10 +43,24 @@ func (s *Store) UpdateToken(id uuid.UUID, token string, token_refresh string) er
 			refresh_token = $3
 		WHERE id = $1;
 	`
+	var u types.User
 
-	_, err := s.store.DB.Exec(query, id, token, token_refresh)
-	if err != nil {
-		return errors.New("Failed to update token!" + err.Error())
+	if err := tx.QueryRowContext(
+		ctx,
+		query,
+		id,
+		token,
+		token_refresh,
+	).Scan(
+		&u.Id,
+		&u.Token,
+		&u.Rerfresh_token,
+	); err != nil {
+		return nil
+	}
+
+	if err := tx.Commit(); err != nil {
+		return errors.New("Failed to commit the transactions!")
 	}
 
 	return nil
@@ -68,6 +97,20 @@ func (s *Store) GetUserById(id uuid.UUID) (*types.User, error) {
 }
 
 func (s *Store) CreateUser(ctx context.Context, user *types.User) error  {
+
+	tx_options := &sql.TxOptions{
+		Isolation: sql.LevelSerializable,
+		ReadOnly: false,
+	}
+	ctx, cancle := context.WithTimeout(context.Background(), time.Second * 10)
+	defer cancle()
+
+	tx, err := s.store.BeginTxx(ctx, tx_options)
+	if err != nil {
+		return errors.New("Failed to doing transactions!")
+	}
+
+	defer tx.Rollback()
 	
 	query := `
 		INSERT INTO users (id, firstname, lastname, 
@@ -76,7 +119,7 @@ func (s *Store) CreateUser(ctx context.Context, user *types.User) error  {
 		RETURNING *;
 	`
 
-	if err := s.store.QueryRowContext(
+	if err := tx.QueryRowContext(
 		ctx,
 		query,
 		user.Id,
@@ -106,6 +149,10 @@ func (s *Store) CreateUser(ctx context.Context, user *types.User) error  {
 		&user.Updated_at,
 		); err != nil {
 		return nil
+	}
+
+	if err := tx.Commit(); err != nil {
+		return errors.New("Failed to commit the transaction!")
 	}
 
 	return nil
@@ -170,6 +217,20 @@ func (s *Store) UpdateDataUser(
 	users *types.User,
 	) error {
 
+	tx_options := &sql.TxOptions{
+		Isolation: sql.LevelSerializable,
+		ReadOnly: false,
+	}
+	ctx, cancle := context.WithTimeout(context.Background(), time.Second * 10)
+	defer cancle()
+
+	tx, err := s.store.BeginTxx(ctx, tx_options)
+	if err != nil {
+		return errors.New("Failed to doing transactions!")
+	}
+
+	defer tx.Rollback()
+
 	query := `
 		UPDATE users 
 		SET firstname = $2,
@@ -182,7 +243,7 @@ func (s *Store) UpdateDataUser(
 	`
 	var u = users
 
-	if err := s.store.QueryRowContext(
+	if err := tx.QueryRowContext(
 		ctx,
 		query,
 		id,
@@ -204,18 +265,36 @@ func (s *Store) UpdateDataUser(
 		return nil
 	}
 
+	if err := tx.Commit(); err != nil {
+		return errors.New("Failed to commit the transactions!")
+	}
+
 	return nil
 
 }
 
 func (s *Store) DeleteUsersOnlyAdmin(id uuid.UUID, ctx context.Context) error {
 
+	tx_options := &sql.TxOptions{
+		Isolation: sql.LevelSerializable,
+		ReadOnly: false,
+	}
+	ctx, cancle := context.WithTimeout(context.Background(), time.Second * 10)
+	defer cancle()
+
+	tx, err := s.store.BeginTxx(ctx, tx_options)
+	if err != nil {
+		return errors.New("Failed to doing the transactions!")
+	}
+
+	defer tx.Rollback()
+
 	query := `
 		DELETE FROM users WHERE id = $1; 
 	`
 	var users types.User
 
-	result, err := s.store.ExecContext(ctx, query, users.Id)
+	result, err := tx.ExecContext(ctx, query, users.Id)
 	if err != nil {
 		return errors.New("Failed to execute the context from db" + err.Error())
 	}
@@ -232,3 +311,4 @@ func (s *Store) DeleteUsersOnlyAdmin(id uuid.UUID, ctx context.Context) error {
 	return nil
 
 }
+
