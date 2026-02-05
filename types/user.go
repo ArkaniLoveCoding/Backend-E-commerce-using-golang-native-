@@ -9,10 +9,11 @@ import (
 
 
 type UserStore interface {
-	UpdateToken(id uuid.UUID, token string, token_refresh string, ctx context.Context) error
+	UpdateToken(
+		ctx context.Context, id uuid.UUID, token string, token_refresh string, user *User) error
 	GetUserByEmail(email string) (*User, error)
 	GetUserById(id uuid.UUID) (*User, error)
-	CreateUser(context.Context, *User) error 
+	CreateUser(ctx context.Context, user *User) error 
 	GetAllUser() ([]User, error)
 	GetUsersRole(role string) (*User, error)
 	UpdateDataUser(

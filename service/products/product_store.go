@@ -69,7 +69,7 @@ func (s *Store) GetProductByID(id uuid.UUID) (*types.Products, error) {
 func (s *Store) CreateNewProduct(ctx context.Context, products *types.Products) error {
 
 	tx_options := &sql.TxOptions{
-		Isolation: sql.LevelLinearizable,
+		Isolation: sql.LevelSerializable,
 		ReadOnly: false,
 	}
 	ctx, cancle := context.WithTimeout(context.Background(), time.Second * 10)
@@ -77,7 +77,7 @@ func (s *Store) CreateNewProduct(ctx context.Context, products *types.Products) 
 
 	tx, err := s.store.BeginTxx(ctx, tx_options)
 	if err != nil {
-		return errors.New("Failed to doing some transactions!")
+		return errors.New(err.Error())
 	}
 
 	defer tx.Rollback()
@@ -110,6 +110,10 @@ func (s *Store) CreateNewProduct(ctx context.Context, products *types.Products) 
 		&products.Updated_at,
 	); err != nil {
 		return errors.New("Failed to scan query and store!" + err.Error())
+	}
+
+	if err := tx.Commit(); err != nil {
+		return errors.New("Failed to do commit on this seasons!")
 	}
 
 	return nil
@@ -211,5 +215,38 @@ func (s *Store) UpdateProductsOnlyAdmin(
 	}
 
 	return nil
+
+}
+
+func (s *Store) SearchManyProducts(ctx context.Context, keyword string, offset int, limit int) ([]types.Products, error) {
+
+	query := `
+		SELECT id, name, price, stock, category, expired, 
+		FROM product_clients WHERE name LIKE ?
+		LIMIT = ? OFFSET = ?
+	`
+
+	ctx, cancle := context.WithTimeout(context.Background(), time.Second * 10)
+	defer cancle()
+
+	search_query := "%" + keyword + "%"
+
+	rows, err := s.store.QueryContext(ctx, query, search_query, offset, limit)
+	if err != nil {
+		return nil, errors.New("Failed to get data from db!")
+	}
+	defer rows.Close()
+
+	var products []types.Products
+
+	for rows.Next() {
+		var p types.Products
+		if err := rows.Scan(&p); err != nil {
+			return nil, errors.New("Failed to get data from db!")
+		}
+		products = append(products, p)
+	}
+
+	return nil, nil
 
 }

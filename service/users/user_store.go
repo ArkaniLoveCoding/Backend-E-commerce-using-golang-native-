@@ -21,16 +21,17 @@ func NewStore(store *sqlx.DB) *Store {
 	return &Store{store: store}
 }
 
-func (s *Store) UpdateToken(id uuid.UUID, token string, token_refresh string, ctx context.Context) error {
+func (s *Store) UpdateToken(
+	ctx context.Context, id uuid.UUID, token string, token_refresh string, user *types.User) error {
 
 	tx_options := &sql.TxOptions{
 		Isolation: sql.LevelSerializable,
 		ReadOnly: false,
 	}
-	ctx, cancle := context.WithTimeout(context.Background(), time.Second * 10)
+	ctx_tx, cancle := context.WithTimeout(context.Background(), time.Second * 10)
 	defer cancle()
 
-	tx, err := s.store.BeginTxx(ctx, tx_options)
+	tx, err := s.store.BeginTxx(ctx_tx, tx_options)
 	if err != nil {
 		return errors.New("Failed to doing transactions!")
 	}
@@ -43,7 +44,6 @@ func (s *Store) UpdateToken(id uuid.UUID, token string, token_refresh string, ct
 			refresh_token = $3
 		WHERE id = $1;
 	`
-	var u types.User
 
 	if err := tx.QueryRowContext(
 		ctx,
@@ -52,9 +52,9 @@ func (s *Store) UpdateToken(id uuid.UUID, token string, token_refresh string, ct
 		token,
 		token_refresh,
 	).Scan(
-		&u.Id,
-		&u.Token,
-		&u.Rerfresh_token,
+		&user.Id,
+		&user.Token,
+		&user.Rerfresh_token,
 	); err != nil {
 		return nil
 	}

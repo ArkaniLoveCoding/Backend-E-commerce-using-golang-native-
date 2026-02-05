@@ -17,8 +17,12 @@ import (
 
 func TestProductsCreate(t *testing.T) {
 
-	userStore := &mockStore{}
-	Handler := NewHandlerProduct(userStore)
+	productStore := &mockStore{
+		CreateProductFn: func(ctx context.Context, product *types.Products) error {
+			return nil
+		},
+	}
+	Handler := NewHandlerProduct(productStore)
 
 	t.Run("This is the products create test!", func(t *testing.T) {
 
@@ -61,6 +65,178 @@ func TestProductsCreate(t *testing.T) {
 
 }
 
+func TestProductUpdate(t *testing.T) {
+
+	productStore := &mockStore{
+		UpdateProductFn: func(id uuid.UUID, ctx context.Context, name, price string, stock int, category, expired string) error {
+			return nil
+		},
+	}
+	handler := NewHandlerProduct(productStore)
+	
+	t.Run("TESTING UPDATE PRODUCT", func(t *testing.T) {
+
+		id_fake := uuid.New()
+
+		payload := types.Products{
+			Id: id_fake,
+			Name: "Indomie aceh",
+			Price: "Rp10.0000",
+			Stock: 10,
+			Category: "makanan instan",
+			Expired: "10 Januari 2030",
+		}
+
+		encode, err := json.Marshal(&payload)
+		if err != nil {
+			t.Errorf("Failed to marshall json payload!")
+		}
+
+		req, err := http.NewRequest(
+			http.MethodPut,
+			"/product/"+id_fake.String(),
+			bytes.NewBuffer(encode),
+		)
+		if err != nil {
+			t.Errorf("Erorr cannot be request for http new request!")
+		}
+
+		router := mux.NewRouter()
+		rr := httptest.NewRecorder()
+		router.HandleFunc("/product/{id}", handler.UpdateProductsOnlyAdmin)
+
+		router.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusBadRequest {
+			t.Errorf("the response mus be return bad request")
+		}
+
+		t.Log(rr.Body.String())
+
+	})
+
+}
+
+func TestProductDelete (t *testing.T) {
+
+	productStore := &mockStore{
+		DeleteProductFn: func(id uuid.UUID, ctx context.Context) error {
+			return nil
+		},
+	}
+
+	handler := NewHandlerProduct(productStore)
+
+	t.Run("this testing must be return bad request!", func(t *testing.T) {
+
+		id_fake := uuid.New()
+
+		req, err := http.NewRequest(
+			http.MethodDelete,
+			"/products/"+id_fake.String(),
+			nil,
+		)
+		if err != nil {
+			t.Errorf("Failed to make a new request for delete!")
+		}
+
+		router := mux.NewRouter()
+		rr := httptest.NewRecorder()
+
+		router.HandleFunc("/products/{id}", handler.DeleteProduct)
+
+		router.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusBadRequest {
+			t.Errorf("The response should be bad request response!")
+		}
+
+		t.Log(rr.Body.String())
+
+	})
+
+}
+
+func TestGetOneProduct (t *testing.T) {
+
+
+	productStore := &mockStore{
+		GetOneProductFn: func(id uuid.UUID) (*types.Products, error) {
+			return nil, nil
+		},
+	}
+
+	handler := NewHandlerProduct(productStore)
+
+	t.Run("The response should be return a bad request response", func(t *testing.T) {
+
+		id_fake := uuid.New()
+
+		req, err := http.NewRequest(
+			http.MethodGet,
+			"/products/"+id_fake.String(),
+			nil,
+		)
+		if err != nil {
+			t.Errorf("Failed to make new http request")
+		}
+
+		router := mux.NewRouter()
+		rr := httptest.NewRecorder()
+
+		router.HandleFunc("/products/{id}", handler.GetProductByIDHandler)
+
+		router.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusBadRequest {
+			t.Errorf("The response must be a bad request response!")
+		}
+
+		t.Log(rr.Code)
+		t.Log(rr.Body.String())
+
+	})
+
+}
+
+func TestGetAllProduct (t *testing.T) {
+
+	productStore := &mockStore{
+		GetAllProductFn: func() ([]types.Products, error) {
+			return nil, nil
+		},
+	}
+
+	handler := NewHandlerProduct(productStore)
+
+	t.Run("The returnof this response must be a bad request response!", func(t *testing.T) {
+
+		req, err := http.NewRequest(
+			http.MethodGet,
+			"/products",
+			nil,
+		)
+		if err != nil {
+			t.Errorf("Failed to make new http request for this testing!")
+		}
+
+		router := mux.NewRouter()
+		rr := httptest.NewRecorder()
+
+		router.HandleFunc("/products", handler.GetAllProduct)
+
+		router.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusBadRequest {
+			t.Errorf("The respone should be bad request response!")
+		}
+
+		t.Log(rr.Body.String())
+
+	})
+
+}
+
 type mockStore struct {
 	DeleteProductFn func(id uuid.UUID, ctx context.Context) error 
 	CreateProductFn func(ctx context.Context, product *types.Products) error
@@ -75,6 +251,7 @@ type mockStore struct {
 		category string,
 		expired string, 
 	) error 
+	SearchManyProductsFn func(ctx context.Context, keyword string, offset int, limit int) ([]types.Products, error)
 }
 
 func (m *mockStore) GetAllProduct() ([]types.Products, error) {
@@ -112,5 +289,11 @@ func (m *mockStore) UpdateProductsOnlyAdmin(
 ) error {
 
 	return m.UpdateProductFn(id, ctx_update, name, price, stock, category, expired)
+
+}
+
+func (m *mockStore) SearchManyProducts(ctx context.Context, keyword string, offset int, limit int) ([]types.Products, error) {
+
+	return m.SearchManyProductsFn(ctx, keyword, offset, limit)
 
 }

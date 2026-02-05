@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/go-playground/validator/v10"
@@ -188,6 +189,11 @@ func (h *HandleRequest) GetAllProduct(w http.ResponseWriter, r *http.Request) {
 		return 
 	}
 
+	if products == nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to get data of products because the data is nil!", false)
+		return
+	}
+
 	utils.WriteSuccess(w, http.StatusAccepted, "Successfully to get all data of product", products)
 
 }
@@ -296,8 +302,8 @@ func (h *HandleRequest) UpdateProductsOnlyAdmin(w http.ResponseWriter, r *http.R
 		Name: payload_update.Name,
 		Price: payload_update.Price,
 		Stock: payload_update.Stock,
-		Category: payload_update.Category,
 		Expired: payload_update.Expired,
+		Category: payload_update.Category,
 	}
 
 	ctx, cancle := context.WithTimeout(r.Context(), time.Second * 10)
@@ -331,3 +337,45 @@ func (h *HandleRequest) UpdateProductsOnlyAdmin(w http.ResponseWriter, r *http.R
 
 }
 
+func (h *HandleRequest) SearchManyProductsRoutes(w http.ResponseWriter, r *http.Request) {
+
+	keyword := r.URL.Query()
+	keyword_user := keyword.Get("products")
+	keyword_page := keyword.Get("page")
+	keyword_limit := keyword.Get("limit")
+
+	page, err := strconv.Atoi(keyword_page)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to decode the params of page!", err.Error())
+		return
+	}
+
+	limit, err := strconv.Atoi(keyword_limit)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to get the params of the limit!", err.Error())
+	}
+
+	if page < 1 {
+		page = 1
+	}
+
+	offset := (page - 1) * limit
+
+	ctx, cancle := context.WithTimeout(r.Context(), time.Second * 10)
+	defer cancle()
+	
+	products, err := h.db.SearchManyProducts(
+		ctx,
+		keyword_user,
+		offset,
+		limit,
+	)
+
+	if products == nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to find the data as you want!", false)
+		return
+	}
+
+	utils.WriteSuccess(w, http.StatusAccepted, "Successfully to get data from db!", products)
+
+}

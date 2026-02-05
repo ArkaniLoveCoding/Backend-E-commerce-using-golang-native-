@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -36,27 +35,18 @@ func NewHandlerUserForAuthenticate (db types.UserStore) *HandleRequestForAuthent
 	return &HandleRequestForAuthenticate{db: db}
 }
 
-
-func (h *HandleRequest) UpdateTokenFunc (id uuid.UUID, token string, token_refresh string) error {
-
-	ctx, cancle := context.WithTimeout(context.Background(), time.Second * 10)
-	defer cancle()
-
-	err := h.db.UpdateToken(id, token, token_refresh, ctx)
-	if err != nil {
-		return errors.New("Failed to update the token!" + err.Error())
-	}
-
-	return nil
-
-}
-
 func (h *HandleRequest) RegistrationFunc(w http.ResponseWriter, r *http.Request) {
 
 	var validate *validator.Validate
 	var request types.Register
 	if err := utils.DecodeData(r, &request); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Cannot decode data payload!", false)
+		return
+	}
+
+	isValid := utils.IsValidEmail(request.Email)
+	if !isValid {
+		utils.WriteError(w, http.StatusBadRequest, "The format of your gmail is use @!", false)
 		return
 	}
 
@@ -138,6 +128,12 @@ func (h *HandleRequest) LoginFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	isValid := utils.IsValidEmail(request.Email)
+	if !isValid {
+		utils.WriteError(w, http.StatusBadRequest, "The format of your gmail is @!", false)
+		return
+	}
+
 	validate = validator.New()
 	if err := validate.Struct(request); err != nil {
 		var errorValidate []string 
@@ -175,8 +171,11 @@ func (h *HandleRequest) LoginFunc(w http.ResponseWriter, r *http.Request) {
 		utils.WriteError(w, http.StatusBadRequest, "Failed to genereate jwt!", err.Error())
 	}
 
-	if err := h.UpdateTokenFunc(user.Id, token, refresh_token); err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "Failed to update the token!", err.Error())
+	ctx_token, cancle := context.WithTimeout(r.Context(), time.Second * 10)
+	defer cancle()
+
+	if err := h.db.UpdateToken(ctx_token, user.Id, token, refresh_token, user); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to update token!", err.Error())
 		return
 	}
 
@@ -218,6 +217,12 @@ func (h *HandleRequestForAuthenticate) GetProfileUser(w http.ResponseWriter, r *
 		return 
 	}
 
+	isValid := utils.IsValidEmail(user.Email)
+	if !isValid {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to get the profile because your email is not an valid email!", false)
+		return
+	}
+
 	user_response := types.UserResponse{
 		Id: user.Id,
 		Firstname: user.Firstname,
@@ -240,6 +245,12 @@ func (h *HandleRequest) UpdateUser(w http.ResponseWriter, r *http.Request) {
 
 	if err := utils.DecodeData(r, &request_update); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Failed to decode data!", err.Error())
+		return
+	}
+
+	isValid := utils.IsValidEmail(request_update.Email)
+	if !isValid {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to update an email because the email not valid !", false)
 		return
 	}
 

@@ -158,6 +158,14 @@ func (s *ApiServer) Run() error {
 		)),
 	).Methods("PUT")
 
+	// search products 
+	subRouter.Handle(
+		"/products",
+		http.HandlerFunc(
+			productServices.SearchManyProductsRoutes,
+		),
+	).Methods("GET")
+
 	// Create HTTP server
 	s.server = &http.Server{
 		Addr:   s.Addr,

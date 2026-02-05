@@ -21,6 +21,7 @@ type ProductStore interface {
 		expired string,
 		ctx_update context.Context,
 	) error
+	SearchManyProducts(ctx context.Context, keyword string, offset int, limit int) ([]Products, error)
 }
 
 type Products struct {
