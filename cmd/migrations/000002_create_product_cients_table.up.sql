@@ -3,6 +3,7 @@ CREATE TABLE public.product_clients (
                 gen_random_uuid(),
     name        TEXT NOT NULL, 
     stock       INT NOT NULL,
+    image       TEXT NOT NULL,
     price       TEXT NOT NULL,
     expired     TEXT NOT NULL,
     category    TEXT NOT NULL,

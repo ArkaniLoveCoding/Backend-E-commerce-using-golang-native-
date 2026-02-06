@@ -3,7 +3,10 @@ package product
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 
@@ -29,44 +32,85 @@ func NewHandlerProduct(db types.ProductStore) *HandleRequest {
 
 func (h *HandleRequest) CreateNewProductTesting(w http.ResponseWriter, r *http.Request) {
 
-	var validate *validator.Validate
-	var request types.ProductResponse
-	if err := utils.DecodeData(r, &request); err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "Failed to decode the response!", err.Error())
+	time_created := time.Now().UTC()
+	time_updated := time.Now().UTC()
+
+	r.Body = http.MaxBytesReader(w, r.Body, 2 << 20)
+
+	if err := r.ParseMultipartForm(32 << 10); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to settings the multipart form data!", err.Error())
+		return
+	}
+
+	name_product := r.FormValue("name")
+	stock_product := r.FormValue("stock")
+	category_product := r.FormValue("category")
+	expired_product := r.FormValue("expired")
+	price_product := r.FormValue("price")
+
+	stock_product_convert, err := strconv.Atoi(stock_product)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to convert the string into a integer!", err.Error())
 		return 
 	}
 
+	file, header, err := r.FormFile("image")
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to get the form file into an image!", err.Error())
+		return
+	}
+	defer file.Close()
+
+	bufff := make([]byte, 255)
+	file.Read(bufff)
+	content_type := http.DetectContentType(bufff)
+
+	if content_type != "img/jpg" || content_type != "img/png" || content_type != "img/jpeg" || content_type != "img/gif" {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to detect the content type of file!", false)
+		return
+	}
+	file.Seek(0, 0)
+
+	filename := uuid.New().String() + filepath.Ext(header.Filename)
+	path := filepath.Join("uoloads", filename)
+
+	path_file, err := os.Create(path)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to create the os path for these file form!", err.Error())
+		return 
+	}
+	defer path_file.Close()
+
+	io.Copy(path_file, file)
+
+	ctx, cancle := context.WithTimeout(r.Context(), time.Second * 10)
+	defer cancle()
+
+	product := &types.Products{
+		Id: uuid.New(),
+		Name: name_product,
+		Price: price_product,
+		Stock: stock_product_convert,
+		Category: category_product,
+		Expired: expired_product,
+		Created_at: time_created,
+		Updated_at: time_updated,
+	}
+
+	var validate *validator.Validate
+
 	validate = validator.New()
-	if err := validate.Struct(&request); err != nil {
+	if err := validate.Struct(&product); err != nil {
 		var errors []string
 		for _, errorValidate := range err.(validator.ValidationErrors) {
 			errors = append(errors, fmt.Sprintf("Fatal Error ! : %v, %v", errorValidate.Field(), errorValidate.Tag()))
 		}
 	}
-	time_created := time.Now().UTC()
-	time_updated := time.Now().UTC()
 
-	products := &types.Products{
-		Id: request.Id,
-		Name: request.Name,
-		Stock: request.Stock,
-		Price: request.Price,
-		Expired: request.Expired,
-		Category: request.Category,
-		Created_at: time_created,
-		Updated_at: time_updated,
-	}
-	
-	ctx, cancle := context.WithTimeout(context.Background(), time.Second * 10)
-	defer cancle()
-
-	if err := h.db.CreateNewProduct(ctx, products); err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "Failed to create new data of products!", err.Error())
+	if err := h.db.CreateNewProduct(ctx, product); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to create new data for product clients!", err.Error())
 		return
 	}
-
-	utils.WriteSuccess(w, http.StatusAccepted, "Successfully to create new products!", products)
-
 
 }
 

@@ -28,6 +28,7 @@ type Products struct {
 	Id        		uuid.UUID    `db:"id"`
 	Name      		string 		`db:"name"`
 	Stock     		int    		`db:"stock"`
+	Image 			string 		`db:"image"`
 	Price      		string 		`db:"price"`
 	Expired    		string 		`db:"expired"`
 	Category   		string 		`db:"category"`
@@ -39,6 +40,7 @@ type ProductResponse struct {
 	Id				uuid.UUID 	`json:"id"`
 	Name 			string 		`json:"name" validate:"required,min=2,max=100"`
 	Stock 			int 		`json:"stock" validate:"required,min=2,max=100"`
+	Image 			string		`json:"image" validate:"required"`
 	Price 			string 		`json:"price" validate:"required,min=2,max=100"`
 	Expired 		string		`json:"expired" validate:"required,min=2,max=100"`
 	Category 		string 		`json:"category" validate:"required,min=2,max=100"`
@@ -50,6 +52,7 @@ type PayloadUpdate struct {
 	Id				uuid.UUID 	`json:"id"`
 	Name 			string 		`json:"name" validate:"required,min=2,max=100"`
 	Stock 			int 		`json:"stock" validate:"required,min=2,max=100"`
+	Image 			string 		`json:"image" validate:"required"`
 	Price 			string 		`json:"price" validate:"required,min=2,max=100"`
 	Expired 		string		`json:"expired" validate:"required,min=2,max=100"`
 	Category 		string 		`json:"category" validate:"required,min=2,max=100"`

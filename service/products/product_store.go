@@ -154,6 +154,10 @@ func (s *Store) DeleteProductsOnlyAdmin(id uuid.UUID, ctx context.Context) error
 		return errors.New("No one data is executed in your db, thats why the rows is confirmed zero value!")
 	}
 
+	if err := tx.Commit(); err != nil {
+		return errors.New("Failed to comit some transactions!")
+	}
+
 	return nil
 
 }
@@ -212,6 +216,10 @@ func (s *Store) UpdateProductsOnlyAdmin(
 
 	if result_affected == 0 {
 		return errors.New("no one data is changing in your db!")
+	}
+
+	if err := tx.Commit(); err != nil {
+		return errors.New("Failed to comit some transactions!")
 	}
 
 	return nil

@@ -308,6 +308,10 @@ func (s *Store) DeleteUsersOnlyAdmin(id uuid.UUID, ctx context.Context) error {
 		return errors.New("Failed to checking the rows affected from your db!")
 	}
 
+	if err := tx.Commit(); err != nil {
+		return errors.New("Failed to comit some transactions!")
+	}
+
 	return nil
 
 }
