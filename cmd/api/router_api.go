@@ -5,6 +5,8 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 
 	"github.com/gorilla/mux"
 	"github.com/jmoiron/sqlx"
@@ -12,6 +14,7 @@ import (
 	"github.com/ArkaniLoveCoding/Golang-Restfull-Api-MySql/middleware"
 	serviceProduct "github.com/ArkaniLoveCoding/Golang-Restfull-Api-MySql/service/products"
 	serviceUser "github.com/ArkaniLoveCoding/Golang-Restfull-Api-MySql/service/users"
+	"github.com/ArkaniLoveCoding/Golang-Restfull-Api-MySql/utils"
 )
 
 type ApiServer struct {
@@ -28,6 +31,7 @@ func ApiServerAddr(addr string, db *sqlx.DB) *ApiServer {
 }
 
 func (s *ApiServer) Run() error {
+
 	router := mux.NewRouter()
 
 	subRouter := router.PathPrefix("/api/v1").Subrouter()
@@ -117,6 +121,31 @@ func (s *ApiServer) Run() error {
 			productServices.CreateProductHandler,
 		)),
 	).Methods("POST")
+
+	// Serve uploaded images
+	fs := http.FileServer(http.Dir("./uploads"))
+	router.PathPrefix("/uploads/").Handler(http.StripPrefix("/uploads/", fs))
+
+	// Endpoint khusus untuk melihat gambar produk
+	subRouter.HandleFunc("/products/images/{filename}", func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		filename := vars["filename"]
+		
+		if filename == "" {
+			utils.WriteError(w, http.StatusBadRequest, "Filename is required!", false)
+			return
+		}
+
+		// Cek apakah file exists
+		path := filepath.Join("./uploads", filename)
+		if _, err := os.Stat(path); os.IsNotExist(err) {
+			utils.WriteError(w, http.StatusNotFound, "Image not found!", false)
+			return
+		}
+
+		// Serve file dengan header yang benar
+		http.ServeFile(w, r, path)
+	}).Methods("GET")
 	
 	// create products for testing the function of router (this is not authenticate!)
 	subRouter.Handle(

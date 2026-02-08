@@ -32,8 +32,11 @@ func NewHandlerProduct(db types.ProductStore) *HandleRequest {
 
 func (h *HandleRequest) CreateNewProductTesting(w http.ResponseWriter, r *http.Request) {
 
-	time_created := time.Now().UTC()
-	time_updated := time.Now().UTC()
+	var request types.PayloadUpdateAndCreate
+	if err := utils.DecodeData(r, &request); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Wrong type of the data!", err.Error())
+	}
+
 
 	r.Body = http.MaxBytesReader(w, r.Body, 2 << 20)
 
@@ -42,6 +45,8 @@ func (h *HandleRequest) CreateNewProductTesting(w http.ResponseWriter, r *http.R
 		return
 	}
 
+
+	// define the multipart form value for the request client
 	name_product := r.FormValue("name")
 	stock_product := r.FormValue("stock")
 	category_product := r.FormValue("category")
@@ -54,6 +59,23 @@ func (h *HandleRequest) CreateNewProductTesting(w http.ResponseWriter, r *http.R
 		return 
 	}
 
+	// convert into a json struct
+	request.Name = name_product
+	request.Price = price_product
+	request.Stock = stock_product_convert
+	request.Category = category_product
+	request.Expired = expired_product
+
+	var validate *validator.Validate
+
+	validate = validator.New()
+	if err := validate.Struct(&request); err != nil {
+		var errors []string
+		for _, errorValidate := range err.(validator.ValidationErrors) {
+			errors = append(errors, fmt.Sprintf("Fatal Error ! : %v, %v", errorValidate.Field(), errorValidate.Tag()))
+		}
+	}
+
 	file, header, err := r.FormFile("image")
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Failed to get the form file into an image!", err.Error())
@@ -61,18 +83,27 @@ func (h *HandleRequest) CreateNewProductTesting(w http.ResponseWriter, r *http.R
 	}
 	defer file.Close()
 
-	bufff := make([]byte, 255)
-	file.Read(bufff)
+	bufff := make([]byte, 512)
+	read_file, err := file.Read(bufff)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to read the file from image!", err.Error())
+		return
+	}
+	if read_file == 0 {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to read the file from image file!", false)
+		return
+	}
 	content_type := http.DetectContentType(bufff)
 
-	if content_type != "img/jpg" || content_type != "img/png" || content_type != "img/jpeg" || content_type != "img/gif" {
-		utils.WriteError(w, http.StatusBadRequest, "Failed to detect the content type of file!", false)
+	if content_type != "image/png" && content_type != "image/jpeg" {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to put your image because the type is not jpg or png!", false)
 		return
 	}
 	file.Seek(0, 0)
 
 	filename := uuid.New().String() + filepath.Ext(header.Filename)
-	path := filepath.Join("uoloads", filename)
+	os.MkdirAll("uploads", os.ModePerm)
+	path := filepath.Join("uploads", filename)
 
 	path_file, err := os.Create(path)
 	if err != nil {
@@ -86,31 +117,44 @@ func (h *HandleRequest) CreateNewProductTesting(w http.ResponseWriter, r *http.R
 	ctx, cancle := context.WithTimeout(r.Context(), time.Second * 10)
 	defer cancle()
 
+	time_created := time.Now().UTC()
+	time_updated := time.Now().UTC()
+
 	product := &types.Products{
 		Id: uuid.New(),
-		Name: name_product,
-		Price: price_product,
-		Stock: stock_product_convert,
-		Category: category_product,
-		Expired: expired_product,
+		Name: request.Name,
+		Price: request.Price,
+		Stock: request.Stock,
+		Image: path,
+		Category: request.Category,
+		Expired: request.Expired,
 		Created_at: time_created,
 		Updated_at: time_updated,
 	}
 
-	var validate *validator.Validate
-
-	validate = validator.New()
-	if err := validate.Struct(&product); err != nil {
-		var errors []string
-		for _, errorValidate := range err.(validator.ValidationErrors) {
-			errors = append(errors, fmt.Sprintf("Fatal Error ! : %v, %v", errorValidate.Field(), errorValidate.Tag()))
-		}
-	}
 
 	if err := h.db.CreateNewProduct(ctx, product); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Failed to create new data for product clients!", err.Error())
 		return
 	}
+
+	product_response := types.ProductResponse{
+		Id: product.Id,
+		Name: product.Name,
+		Stock: product.Stock,
+		Price: product.Price,
+		Category: product.Category,
+		Expired: product.Expired,
+		Created_at: product.Created_at.Format("2006-01-02"),
+		Updated_at: product.Updated_at.Format("2006-01-02"),
+	}
+
+	if price_product == "" {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to convert from product to product_response!", false)
+		return
+	}
+
+	utils.WriteSuccess(w, http.StatusOK, "Success to create new Product!", product_response)
 
 }
 
@@ -129,57 +173,118 @@ func (h *HandleRequest) CreateProductHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	var validate *validator.Validate
-	var request types.ProductResponse
-	if err := utils.DecodeData(r, &request); err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "Failed to decode the response!", err.Error())
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to settings the multipart form data!", err.Error())
+		return
+	}
+
+	// define the multipart form value for the request client
+	name_product := r.FormValue("name")
+	stock_product := r.FormValue("stock")
+	category_product := r.FormValue("category")
+	expired_product := r.FormValue("expired")
+	price_product := r.FormValue("price")
+	stock_product_convert, err := strconv.Atoi(stock_product)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to convert the string into a integer!", err.Error())
 		return 
 	}
 
+	file, header, err := r.FormFile("image")
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to get the form file into an image!", err.Error())
+		return
+	}
+	defer file.Close()
+
+	bufff := make([]byte, 512)
+	read_file, err := file.Read(bufff)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to read the file from image!", err.Error())
+		return
+	}
+	if read_file == 0 {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to read the file from image file!", false)
+		return
+	}
+	content_type := http.DetectContentType(bufff)
+
+	if content_type != "image/png" && content_type != "image/jpeg" {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to put your image because the type is not jpg or png!", false)
+		return
+	}
+	file.Seek(0, 0)
+
+	filename := uuid.New().String() + filepath.Ext(header.Filename)
+	os.MkdirAll("uploads", os.ModePerm)
+	path := filepath.Join("uploads", filename)
+
+	path_file, err := os.Create(path)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to create the os path for these file form!", err.Error())
+		return 
+	}
+	defer path_file.Close()
+
+	io.Copy(path_file, file)
+
+	ctx, cancle := context.WithTimeout(r.Context(), time.Second * 10)
+	defer cancle()
+
+	time_created := time.Now().UTC().Format("2006-01-02")
+	time_updated := time.Now().UTC().Format("2006-01-02")
+
+	products := types.PayloadUpdateAndCreate{
+		Id: uuid.New(),
+		Name: name_product,
+		Stock: stock_product_convert,
+		Image: path,
+		Price: price_product,
+		Category: category_product,
+		Expired: expired_product,
+		Created_at: time_created,
+		Updated_at: time_updated,
+	}	
+
+	products_types := &types.Products{
+		Id: products.Id,
+		Name: products.Name,
+		Stock: products.Stock,
+		Image: products.Image,
+		Price: products.Price,
+		Category: products.Category,
+		Expired: products.Expired,
+		Created_at: time.Now().UTC(),
+		Updated_at: time.Now().UTC(),
+	}
+
+	var validate *validator.Validate
 	validate = validator.New()
-	if err := validate.Struct(&request); err != nil {
+	if err := validate.Struct(&products); err != nil {
 		var errors []string
 		for _, errorValidate := range err.(validator.ValidationErrors) {
 			errors = append(errors, fmt.Sprintf("Fatal Error ! : %v, %v", errorValidate.Field(), errorValidate.Tag()))
 		}
 	}
-	time_created := time.Now().UTC()
-	time_updated := time.Now().UTC()
 
-	time_format_created := time_created.Local().Format("2006-01-02")
-	time_format_updated := time_updated.Format("2006-01-02")
-
-	products := &types.Products{
-		Id: uuid.New(),
-		Name: request.Name,
-		Stock: request.Stock,
-		Price: request.Price,
-		Expired: request.Expired,
-		Category: request.Category,
-		Created_at: time_created,
-		Updated_at: time_updated,
-	}
-
-	product_response := types.ProductResponse{
-		Id: products.Id,
-		Name: products.Name,
-		Stock: products.Stock,
-		Price: products.Price,
-		Expired: products.Expired,
-		Category: products.Category,
-		Created_at: time_format_created,
-		Updated_at: time_format_updated,
-	}
-	
-	ctx, cancle := context.WithTimeout(context.Background(), time.Second * 10)
-	defer cancle()
-
-	if err := h.db.CreateNewProduct(ctx, products); err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "Failed to create new data of products!", err.Error())
+	if err := h.db.CreateNewProduct(ctx, products_types); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to create a new product!", err.Error())
 		return
 	}
 
-	utils.WriteSuccess(w, http.StatusAccepted, "Successfully to create new products!", product_response)
+	product_response := types.ProductResponse{
+		Id: products_types.Id,
+		Name: products_types.Name,
+		Stock: products_types.Stock,
+		Image: products_types.Image,
+		Price: products_types.Price,
+		Category: products_types.Category,
+		Expired: products_types.Expired,
+		Created_at: products.Created_at,
+		Updated_at: products.Updated_at,
+	}
+
+	utils.WriteSuccess(w, http.StatusOK, "Successfully to create new Product!", product_response)
 
 }
 
@@ -214,6 +319,7 @@ func (h *HandleRequest) GetProductByIDHandler(w http.ResponseWriter, r *http.Req
 		Id: products.Id,
 		Name: products.Name,
 		Stock: products.Stock,
+		Image: products.Image,
 		Price: products.Price,
 		Expired: products.Expired,
 		Category: products.Category,
@@ -290,94 +396,7 @@ func (h *HandleRequest) DeleteProduct(w http.ResponseWriter, r *http.Request) {
 
 func (h *HandleRequest) UpdateProductsOnlyAdmin(w http.ResponseWriter, r *http.Request) {
 
-	var validate *validator.Validate
-	var payload_update types.PayloadUpdate
-
-	if err := utils.DecodeData(r, &payload_update); err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "Failed to update the product data!", err.Error())
-		return
-	}
-
-	validate = validator.New()
-	if err := validate.Struct(&payload_update); err != nil {
-		var errors []string
-		for _, errorValidate := range err.(validator.ValidationErrors) {
-			errors = append(errors, fmt.Sprintf("Fatal Error ! : %v, %v", errorValidate.Field(), errorValidate.Tag()))
-		}
-	}
-
-	middleware_get_role, err := middleware.GetValueTokenRole(w, r)
-	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "Failed to get the role from token!", err.Error())
-		return
-	}
-
-	if middleware_get_role != "ADMIN" {
-		utils.WriteError(w, http.StatusBadRequest, "the role cant be access here is admin role!", false)
-		return
-	}
-
-	vars_id := mux.Vars(r)
-	id := vars_id["id"]
-
-	if id == "" {
-		utils.WriteError(w, http.StatusBadRequest, "Failed to get params from id postman!", false)
-	}
-
-	uuid_parse, err := uuid.Parse(id)
-	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "Failed to convert from string into an uuid type !", err.Error())
-		return
-	}
-
-	products, err := h.db.GetProductByID(uuid_parse)
-	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "Failed to get data products from id!", err.Error())
-		return 
-	}
-
-	if products == nil {
-		utils.WriteError(w, http.StatusBadRequest, "Failed to get products because is nill!", false)
-		return
-	}
-
-	var product = &types.Products{
-		Id: payload_update.Id,
-		Name: payload_update.Name,
-		Price: payload_update.Price,
-		Stock: payload_update.Stock,
-		Expired: payload_update.Expired,
-		Category: payload_update.Category,
-	}
-
-	ctx, cancle := context.WithTimeout(r.Context(), time.Second * 10)
-	defer cancle()
-
-	if err := h.db.UpdateProductsOnlyAdmin(
-		uuid_parse,
-		payload_update.Name,
-		payload_update.Stock,
-		payload_update.Category,
-		payload_update.Price,
-		payload_update.Expired,
-		ctx,
-	); err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "Failed to update the data of products!", err.Error())
-		return
-	}
-
-	product_response := types.ProductResponse{
-		Id: product.Id,
-		Name: product.Name,
-		Stock: product.Stock,
-		Price: product.Price,
-		Category: product.Category,
-		Expired: product.Category,
-		Created_at: products.Created_at.Format("2006-01-02"),
-		Updated_at: products.Updated_at.Format("2006-01-02"),
-	}
-
-	utils.WriteSuccess(w, http.StatusOK, "Successfully to update the products!", product_response)
+	
 
 }
 

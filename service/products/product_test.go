@@ -68,7 +68,7 @@ func TestProductsCreate(t *testing.T) {
 func TestProductUpdate(t *testing.T) {
 
 	productStore := &mockStore{
-		UpdateProductFn: func(id uuid.UUID, ctx context.Context, name, price string, stock int, category, expired string) error {
+		UpdateProductFn: func(id uuid.UUID, ctx context.Context, name, price string, stock int, image string, category, expired string) error {
 			return nil
 		},
 	}
@@ -248,6 +248,7 @@ type mockStore struct {
 		name string,
 		price string,
 		stock int, 
+		image string,
 		category string,
 		expired string, 
 	) error 
@@ -282,13 +283,14 @@ func (m *mockStore) UpdateProductsOnlyAdmin(
 	id uuid.UUID,
 	name string,
 	stock int,
+	image string,
 	category string,
 	price string,
 	expired string,
 	ctx_update context.Context,
 ) error {
 
-	return m.UpdateProductFn(id, ctx_update, name, price, stock, category, expired)
+	return m.UpdateProductFn(id, ctx_update, name, price, stock, category, expired, image)
 
 }
 

@@ -14,7 +14,7 @@ func DecodeData (r *http.Request, payload any) error  {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		return errors.New("Failed to decode data payload into a json type!")
+		return errors.New(err.Error())
 	}
 
 	return nil

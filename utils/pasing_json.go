@@ -53,7 +53,7 @@ func ResponseJson (w http.ResponseWriter, code int, data interface{}) error {
 	encode := json.NewEncoder(w)
 
 	if err := encode.Encode(data); err != nil {
-		return errors.New("Failed to load data as a json type !")
+		return errors.New(err.Error())
 	}
 
 	return nil

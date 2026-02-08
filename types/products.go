@@ -16,6 +16,7 @@ type ProductStore interface {
 		id uuid.UUID,
 		name string,
 		stock int,
+		image string,
 		category string,
 		price string,
 		expired string,
@@ -48,7 +49,7 @@ type ProductResponse struct {
 	Updated_at 		string  	`json:"updated_at"`
 }
 
-type PayloadUpdate struct {
+type PayloadUpdateAndCreate struct {
 	Id				uuid.UUID 	`json:"id"`
 	Name 			string 		`json:"name" validate:"required,min=2,max=100"`
 	Stock 			int 		`json:"stock" validate:"required,min=2,max=100"`

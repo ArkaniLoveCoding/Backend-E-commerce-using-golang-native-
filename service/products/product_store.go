@@ -22,7 +22,7 @@ func NewStoreProduct (store *sqlx.DB) *Store {
 
 func (s *Store) GetAllProduct() ([]types.Products, error) {
 
-	query := `SELECT id, name, stock, price, expired, category, created_at, updated_at FROM product_clients`
+	query := `SELECT id, name, stock, image, price, expired, category, created_at, updated_at FROM product_clients`
 
 	rows, err := s.store.Queryx(query)
 	if err != nil {
@@ -51,7 +51,7 @@ func (s *Store) GetProductByID(id uuid.UUID) (*types.Products, error) {
 	var products types.Products
 	query := 
 	`
-	SELECT id, name, stock, price, expired, category FROM product_clients
+	SELECT id, name, stock, image, price, expired, category FROM product_clients
 	WHERE id = $1
 	`
 
@@ -83,8 +83,8 @@ func (s *Store) CreateNewProduct(ctx context.Context, products *types.Products) 
 	defer tx.Rollback()
 
 	query := `
-	INSERT INTO product_clients (id, name, stock, price, expired, category, created_at, updated_at)
-	VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+	INSERT INTO product_clients (id, name, stock, image, price, expired, category, created_at, updated_at)
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 	RETURNING *
 	`
 
@@ -94,6 +94,7 @@ func (s *Store) CreateNewProduct(ctx context.Context, products *types.Products) 
 		products.Id,
 		products.Name,
 		products.Stock,
+		products.Image,
 		products.Price,
 		products.Expired,
 		products.Category,
@@ -103,6 +104,7 @@ func (s *Store) CreateNewProduct(ctx context.Context, products *types.Products) 
 		&products.Id,
 		&products.Name,
 		&products.Stock,
+		&products.Image,
 		&products.Price,
 		&products.Expired,
 		&products.Category,
@@ -137,7 +139,7 @@ func (s *Store) DeleteProductsOnlyAdmin(id uuid.UUID, ctx context.Context) error
 	defer tx.Rollback()
 
 	query := `
-		DELETE FROM users WHERE id = $1;
+		DELETE FROM product_clients WHERE id = $1;
 	`
 
 	result, err := tx.ExecContext(ctx, query, id)
@@ -166,6 +168,7 @@ func (s *Store) UpdateProductsOnlyAdmin(
 	id uuid.UUID, 
 	name string,
 	stock int,
+	image string,
 	category string,
 	expired string,
 	price string,
@@ -189,8 +192,9 @@ func (s *Store) UpdateProductsOnlyAdmin(
 		SET name = $2,
 			price = $3,
 			stock = $4,
-			category = $5,
-			expired = $6
+			image = $5,
+			category = $6,
+			expired = $7
 		WHERE id = $1
 		RETURNING *;
 	`
@@ -202,6 +206,7 @@ func (s *Store) UpdateProductsOnlyAdmin(
 		name,
 		price,
 		stock,
+		image,
 		category,
 		expired,
 	)

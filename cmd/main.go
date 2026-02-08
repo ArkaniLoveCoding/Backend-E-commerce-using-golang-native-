@@ -78,6 +78,7 @@ func main() {
 	}
 
 	log.Println("Server exited properly")
+
 }
 
 func InitStorage(database *sqlx.DB) {
