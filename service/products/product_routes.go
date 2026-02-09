@@ -226,7 +226,14 @@ func (h *HandleRequest) CreateProductHandler(w http.ResponseWriter, r *http.Requ
 	}
 	defer path_file.Close()
 
-	io.Copy(path_file, file)
+	copy, err := io.Copy(path_file, file)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to copy and transfer into a file", err.Error())
+		return 
+	}
+	if copy == 0 {
+		utils.WriteError(w, http.StatusBadRequest, "Invalid length!", false)
+	}
 
 	ctx, cancle := context.WithTimeout(r.Context(), time.Second * 10)
 	defer cancle()
@@ -285,6 +292,131 @@ func (h *HandleRequest) CreateProductHandler(w http.ResponseWriter, r *http.Requ
 	}
 
 	utils.WriteSuccess(w, http.StatusOK, "Successfully to create new Product!", product_response)
+
+}
+
+func (h *HandleRequest) UpdateProductsOnlyAdmin(w http.ResponseWriter, r *http.Request) {
+
+	name_product := r.FormValue("name")
+	stock_product := r.FormValue("stock")
+	price_product := r.FormValue("price")
+	category_product := r.FormValue("category")
+	expired_product := r.FormValue("expired")
+
+	stock_convert, err := strconv.Atoi(stock_product)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to convert data into a integer!", err.Error())
+		return 
+	}
+
+	//define the multipart form from data
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to parse the form data from request client!", err.Error())
+		return
+	}
+
+	file, header, err := r.FormFile("image")
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to get the form file as a image in request client!", err.Error())
+		return
+	}
+	defer file.Close()
+
+	buff := make([]byte, 512)
+	file_read, err := file.Read(buff)
+
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to read the data!", err.Error())
+		return
+	}
+	if file_read == 0 {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to read the file!", false)
+		return
+	}
+
+	detect_content_type := http.DetectContentType(buff)
+	file.Seek(0, 0)
+
+	if detect_content_type != "image/jpg" && detect_content_type != "image/jpeg" {
+		utils.WriteError(w, http.StatusBadRequest, "Invalid type of the image!", err.Error())
+		return 
+	}
+
+	filename := uuid.New().String() + filepath.Ext(header.Filename)
+	os.MkdirAll(filename, os.ModePerm)
+	path := filepath.Join("uploads", filename)
+
+	create_path, err := os.Create(path)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to create new Path!", err.Error())
+		return
+	}
+	defer create_path.Close()
+
+	copy, err := io.Copy(create_path, file)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to copy the file and transfer into a folder!", err.Error())
+		return
+	}
+	if copy == 0 {
+		utils.WriteError(w, http.StatusBadRequest, "Invalid the number!", err.Error())
+		return
+	}
+
+	time_created := time.Now().UTC().Format("2006-01-02")
+	time_updated := time.Now().UTC().Format("2006-01-02")
+
+	product_payload := types.PayloadUpdateAndCreate{
+		Id: uuid.New(),
+		Name: name_product,
+		Stock: stock_convert,
+		Image: path,
+		Price: price_product,
+		Category: category_product,
+		Expired: expired_product,
+		Created_at: time_created,
+		Updated_at: time_updated,
+	}
+
+	products := &types.Products{
+		Id: product_payload.Id,
+		Name: product_payload.Name,
+		Stock: product_payload.Stock,
+		Image: product_payload.Image,
+		Price: product_payload.Price,
+		Category: product_payload.Category,
+		Expired: product_payload.Expired,
+		Created_at: time.Now().UTC(),
+		Updated_at: time.Now().UTC(),
+	}
+
+	ctx, cancle := context.WithTimeout(r.Context(), time.Second * 10)
+	defer cancle()
+
+	if err := h.db.UpdateProductsOnlyAdmin(
+		products.Id,
+		products.Name,
+		products.Stock,
+		products.Image,
+		products.Price,
+		products.Category,
+		products.Expired,
+		ctx,
+	); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to update data!", err.Error())
+	}
+
+	product_response := types.ProductResponse{
+		Id: products.Id,
+		Name: products.Name,
+		Stock: products.Stock,
+		Image: products.Image,
+		Price: products.Price,
+		Category: products.Category,
+		Expired: products.Expired,
+	}
+
+	utils.WriteSuccess(w, http.StatusOK, "Successfully to update data!", product_response)
 
 }
 
@@ -392,12 +524,6 @@ func (h *HandleRequest) DeleteProduct(w http.ResponseWriter, r *http.Request) {
 
 	utils.WriteSuccess(w, http.StatusOK, "Successfully to delete the one of data of the product db!", true)
 	
-}
-
-func (h *HandleRequest) UpdateProductsOnlyAdmin(w http.ResponseWriter, r *http.Request) {
-
-	
-
 }
 
 func (h *HandleRequest) SearchManyProductsRoutes(w http.ResponseWriter, r *http.Request) {
