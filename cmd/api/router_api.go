@@ -5,16 +5,11 @@ import (
 	"errors"
 	"log"
 	"net/http"
-	"os"
-	"path/filepath"
 
 	"github.com/gorilla/mux"
 	"github.com/jmoiron/sqlx"
 
-	"github.com/ArkaniLoveCoding/Golang-Restfull-Api-MySql/middleware"
-	serviceProduct "github.com/ArkaniLoveCoding/Golang-Restfull-Api-MySql/service/products"
 	serviceUser "github.com/ArkaniLoveCoding/Golang-Restfull-Api-MySql/service/users"
-	"github.com/ArkaniLoveCoding/Golang-Restfull-Api-MySql/utils"
 )
 
 type ApiServer struct {
@@ -32,8 +27,10 @@ func ApiServerAddr(addr string, db *sqlx.DB) *ApiServer {
 
 func (s *ApiServer) Run() error {
 
+	//setup mux router
 	router := mux.NewRouter()
 
+	//subrouter of all this router on this router
 	subRouter := router.PathPrefix("/api/v1").Subrouter()
 
 	// testing if the server is working!
@@ -53,147 +50,6 @@ func (s *ApiServer) Run() error {
 
 	userStores := serviceUser.NewStore(s.db)
 	userServices := serviceUser.NewHandlerUserForAuthenticate(userStores)
-
-	productStore := serviceProduct.NewStoreProduct(s.db)
-	productServices := serviceProduct.NewHandlerProduct(productStore)
-
-	// register for user
-
-	subRouter.Handle(
-		"/registration",
-		http.HandlerFunc(
-			userService.RegistrationFunc,
-		),
-	).Methods("POST")
-
-	// login for user
-
-	subRouter.Handle(
-		"/login",
-		http.HandlerFunc(
-			userService.LoginFunc,
-		),
-	).Methods("POST")
-
-	// update data user 
-	subRouter.Handle(
-		"/users/{id}",
-		middleware.AuthenticateForIdUser(http.HandlerFunc(
-			userService.UpdateUser,
-		)),
-	).Methods("PUT")
-	// is authenticate
-
-	subRouter.Handle("/profile", middleware.AuthenticateForIdUser(http.HandlerFunc(
-		userServices.GetProfileUser,
-	))).Methods("GET")
-
-	// delete users 
-	subRouter.Handle(
-		"/users/{id}",
-		middleware.AuthenticateForRole(http.HandlerFunc(
-			userService.DeleteUser,
-		)),
-	).Methods("DELETE")
-
-	// get all users
-	subRouter.Handle(
-		"/users",
-		middleware.AuthenticateForRole(http.HandlerFunc(
-			userService.GetAllUser,
-		)),
-	).Methods("GET")
-
-	// get one users
-	subRouter.Handle(
-		"/users/{id}",
-		http.HandlerFunc(
-			userService.GetOneUsersById,
-		),
-	).Methods("GET")
-
-	// products router (this router is compeletly authenticate for a several methods)
-
-	// create new product
-	subRouter.Handle(
-		"/products",
-		middleware.AuthenticateForRole(http.HandlerFunc(
-			productServices.CreateProductHandler,
-		)),
-	).Methods("POST")
-
-	// Serve uploaded images
-	fs := http.FileServer(http.Dir("./uploads"))
-	router.PathPrefix("/uploads/").Handler(http.StripPrefix("/uploads/", fs))
-
-	// Endpoint khusus untuk melihat gambar produk
-	subRouter.HandleFunc("/products/images/{filename}", func(w http.ResponseWriter, r *http.Request) {
-		vars := mux.Vars(r)
-		filename := vars["filename"]
-		
-		if filename == "" {
-			utils.WriteError(w, http.StatusBadRequest, "Filename is required!", false)
-			return
-		}
-
-		// Cek apakah file exists
-		path := filepath.Join("./uploads", filename)
-		if _, err := os.Stat(path); os.IsNotExist(err) {
-			utils.WriteError(w, http.StatusNotFound, "Image not found!", false)
-			return
-		}
-
-		// Serve file dengan header yang benar
-		http.ServeFile(w, r, path)
-	}).Methods("GET")
-	
-	// create products for testing the function of router (this is not authenticate!)
-	subRouter.Handle(
-		"/products/test",
-		http.HandlerFunc(
-			productServices.CreateNewProductTesting,
-		),
-	).Methods("POST")
-
-	// get all product
-	subRouter.Handle(
-		"/products",
-		http.HandlerFunc(
-			productServices.GetAllProduct,
-		),
-	).Methods("GET")
-
-	// get one product by id
-	subRouter.Handle(
-		"/products/{id}",
-		http.HandlerFunc(
-			productServices.GetProductByIDHandler,
-		),
-	).Methods("GET")
-
-	// delete product 
-	subRouter.Handle(
-		"/products/{id}",
-		middleware.AuthenticateForRole(http.HandlerFunc(
-			productServices.DeleteProduct,
-		)),
-	).Methods("DELETE")
-
-	// update product (admin only)
-	subRouter.Handle(
-		"/products/{id}",
-		middleware.AuthenticateForRole(http.HandlerFunc(
-			productServices.UpdateProductsOnlyAdmin,
-		)),
-	).Methods("PUT")
-
-	// search products 
-	subRouter.Handle(
-		"/products",
-		http.HandlerFunc(
-			productServices.SearchManyProductsRoutes,
-		),
-	).Methods("GET")
 
 	// Create HTTP server
 	s.server = &http.Server{

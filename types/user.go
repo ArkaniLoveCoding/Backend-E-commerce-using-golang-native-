@@ -9,13 +9,8 @@ import (
 
 
 type UserStore interface {
-	UpdateToken(
-		ctx context.Context, id uuid.UUID, token string, token_refresh string, user *User) error
 	GetUserByEmail(email string) (*User, error)
-	GetUserById(id uuid.UUID) (*User, error)
 	CreateUser(ctx context.Context, user *User) error 
-	GetAllUser() ([]User, error)
-	GetUsersRole(role string) (*User, error)
 	UpdateDataUser(
 		id uuid.UUID,
 		ctx context.Context,
@@ -27,35 +22,26 @@ type UserStore interface {
 		address string,
 		user *User,
 		) error
-	DeleteUsersOnlyAdmin(id uuid.UUID, ctx context.Context) error
 }
 
 type User struct {
 	Id				uuid.UUID	`db:"id"`
-	Firstname 		string  	`db:"firstname"`
-	Lastname 		string 		`db:"lastname"`
+	Username 		string  	`db:"username"`
+	Email 			string  	`db:"email"`
 	Password 		string 		`db:"password"`
-	Email 			string 		`db:"email"`
-	Country 		string 		`db:"country"`
-	Address 		string 		`db:"address"`
 	Role 			string 		`db:"role"`
-	Token 			string  	`db:"token"`
-	Rerfresh_token 	string 		`db:"refresh_token"`
+	Profile__Image	string  	`db:"profile_image"`
 	Created_at 		time.Time 	`db:"created_at"`
 	Updated_at		time.Time 	`db:"updated_at"`
 }
 
 type Register struct {
 	Id 				uuid.UUID	`json:"id"`
-	Firstname 		string 		`json:"firstname" validate:"required,min=2,max=100"`
-	Lastname 		string  	`json:"lastname" validate:"required,min=2,max=100"`
-	Password 		string  	`json:"password" validate:"required,min=2,max=100"`
-	Email 	 		string 		`json:"email" validate:"required,email"`
-	Country 		string 		`json:"country" validate:"required,min=2,max=100"`
-	Address 		string 		`json:"address" validate:"required,min=2,max=100"`
-	Role  			string 		`json:"role" validate:"required,oneof=USER ADMIN"`
-	Token 			string 		`json:"token"`
-	Rerfresh_token	string 		`json:"refresh_token"`
+	Username 		string 		`json:"username" validate:"required,min=2,max=100"`
+	Email 			string 		`json:"email" validate:"required,email,min=2,max=100"`
+	Password 		string 		`json:"password" validate:"required,min=2,max=100"`
+	Profile_Image 	string 		`json:"profile_image"`
+	Role 			string 		`json:"role"`
 	Created_at 		time.Time 	`json:"created_at"`
 	Updated_at 		time.Time 	`json:"updated_at"`
 }
@@ -65,42 +51,13 @@ type Login struct {
 	Password 		string	`json:"password" validate:"required,min=2,max=100"`
 }
 
-type UserUpdate struct {
-	Id 				uuid.UUID	`json:"id"`
-	Firstname 		string 		`json:"firstname" validate:"required,min=2,max=100"`
-	Lastname 		string  	`json:"lastname" validate:"required,min=2,max=100"`
-	Password 		string  	`json:"password" validate:"required,min=2,max=100"`
-	Email 	 		string 		`json:"email" validate:"required,email"`
-	Country 		string 		`json:"country" validate:"required,min=2,max=100"`
-	Address 		string 		`json:"address" validate:"required,min=2,max=100"`
-}
-
-type UserUpdateResponse struct {
-	Id 				uuid.UUID	`json:"id"`
-	Firstname 		string 		`json:"firstname" validate:"required,min=2,max=100"`
-	Lastname 		string  	`json:"lastname" validate:"required,min=2,max=100"`
-	Password 		string  	`json:"password" validate:"required,min=2,max=100"`
-	Email 	 		string 		`json:"email" validate:"required,email"`
-	Country 		string 		`json:"country" validate:"required,min=2,max=100"`
-	Address 		string 		`json:"address" validate:"required,min=2,max=100"`
-	Role  			string 		`json:"role" validate:"required,oneof=USER ADMIN"`
-	Token 			string 		`json:"token"`
-	Rerfresh_token	string 		`json:"refresh_token"`
-	Created_at 		string 		`json:"created_at"`
-	Updated_at 		string 		`json:"updated_at"`
-}
-
 type UserResponse struct {
 	Id				uuid.UUID	`json:"id"`
-	Firstname 		string 		`json:"firstname"`
-	Lastname 		string  	`json:"lastname"`
-	Password 		string  	`json:"password"`
-	Email 	 		string 		`json:"email"`
-	Country 		string 		`json:"country"`
-	Address 		string 		`json:"address"`
-	Role  			string 		`json:"role"`
-	Token 			string 		`json:"token"`
-	Rerfresh_token	string 		`json:"refresh_token"`
+	Username 		string 		`json:"username"`
+	Email 			string 		`json:"email"`
+	Password 		string 		`json:"password"`
+	Profile_Image   string 		`json:"profile_image"`
+	Role 			string 		`json:"role"`
 	Created_at 		string  	`json:"created_at"`
 	Updated_at 		string 		`json:"updated_at"`
 }

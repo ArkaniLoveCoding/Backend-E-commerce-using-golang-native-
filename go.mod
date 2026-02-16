@@ -1,5 +1,4 @@
-module github.com/ArkaniLoveCoding/Golang-Restfull-Api-MySql
-
+module github.com/ArkaniLoveCoding/School-manajement
 go 1.24.10
 
 require (

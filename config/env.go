@@ -33,11 +33,11 @@ func ConfigInitialize() ConfigParams {
 
 	return ConfigParams{
 		PublicHost: KeyEnvLookUp("PUBLIC_HOST", "http://localhost"),
-		Port	  : KeyEnvLookUp("PORT", ":9090"),
+		Port	  : KeyEnvLookUp("PORT", ":8080"),
 		// PostgreSQL specific config
 		PostgresHost:            KeyEnvLookUp("DB_HOST", "localhost"),
 		PostgresPort:            KeyEnvLookUp("DB_PORT", "5432"),
-		PostgresName:            KeyEnvLookUp("DB_NAME", "projectarkani"),
+		PostgresName:            KeyEnvLookUp("DB_NAME", "School-manajement"),
 		PostgresUser:            KeyEnvLookUp("DB_USER", "appuser2"),
 		PostgresPassword:        KeyEnvLookUp("DB_PASSWORD", "app123"),
 		PostgresMaxOpenConns:    getEnvInt("DB_MAX_OPEN_CONNS", 25),

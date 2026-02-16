@@ -2,7 +2,7 @@ DB_USER=appuser2
 DB_PASSWORD=app123
 DB_HOST=localhost
 DB_PORT=5432
-DB_NAME=projectarkani
+DB_NAME=School-manajement
 DB_SSLMODE=disable
 
 DB_URL=postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=$(DB_SSLMODE)

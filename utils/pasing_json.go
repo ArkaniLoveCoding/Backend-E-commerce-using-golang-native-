@@ -13,7 +13,22 @@ type JsonParams struct {
 	Data 		interface{}	`json:"data"`
 }
 
-func WriteSuccess (w http.ResponseWriter, code int, message string, data interface{}) error {
+func ResponseJson (w http.ResponseWriter, code int, data interface{}) error {
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+
+	encode := json.NewEncoder(w)
+
+	if err := encode.Encode(data); err != nil {
+		return errors.New(err.Error())
+	}
+
+	return nil
+
+}
+
+func responseSuccess (w http.ResponseWriter, code int, message string, data interface{}) error {
 
 	response_json := JsonParams{
 		Message: message,
@@ -29,7 +44,7 @@ func WriteSuccess (w http.ResponseWriter, code int, message string, data interfa
 
 }
 
-func WriteError (w http.ResponseWriter, code int, message string, data interface{}) error {
+func responseError (w http.ResponseWriter, code int, message string, data interface{}) error {
 
 	response_json := JsonParams{
 		Message: message,
@@ -39,21 +54,6 @@ func WriteError (w http.ResponseWriter, code int, message string, data interface
 
 	if err := ResponseJson(w, code, response_json); err != nil {
 		return nil
-	}
-
-	return nil
-
-}
-
-func ResponseJson (w http.ResponseWriter, code int, data interface{}) error {
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-
-	encode := json.NewEncoder(w)
-
-	if err := encode.Encode(data); err != nil {
-		return errors.New(err.Error())
 	}
 
 	return nil

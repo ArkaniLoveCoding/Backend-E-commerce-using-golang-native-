@@ -31,7 +31,7 @@ func DefaultConfig() Config {
 		Port:            "5432",
 		Username:        "appuser2",
 		Password:        "app123",
-		Database:        "projectarkani",
+		Database:        "School-manajement",
 		MaxOpenConns:    25,
 		MaxIdleConns:    5,
 		ConnMaxLifetime: 5 * time.Minute,
